@@ -24,7 +24,9 @@ connectDB();
 const app = express();
 
 // Middlewares essenciais
-app.use(cors());
+app.use(cors({
+    origin: "https://ah-three.vercel.app" // O endereço CORRETO
+}));
 app.use(express.json());
 
 app.use('/uploads', express.static('uploads'));
