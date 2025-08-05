@@ -23,10 +23,21 @@ connectDB();
 
 const app = express();
 
+const allowedOrigins = ['http://localhost:3000', 'https://ah-three.vercel.app'];
+
 // Middlewares essenciais
 app.use(cors({
-    origin: "https://ah-three.vercel.app" // O endereço CORRETO
+    origin: function (origin, callback) {
+        // Permite requisições sem 'origin' (como de apps mobile ou Postman)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'A política de CORS para este site não permite acesso da Origem especificada.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    }
 }));
+
 app.use(express.json());
 
 app.use('/uploads', express.static('uploads'));
@@ -45,6 +56,6 @@ const server = http.createServer(app);
 
 initSocket(server);
 
-server.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor rodando na porta ${PORT} e acessível na sua rede local`);
 });
