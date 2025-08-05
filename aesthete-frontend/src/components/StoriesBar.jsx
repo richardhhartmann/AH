@@ -56,7 +56,7 @@ const StoriesBar = ({ onStoryClick }) => {
         <StoriesContainer>
             {storyFeed.map(userStories => (
                 <StoryCircle key={userStories.userId} onClick={() => onStoryClick(userStories)}>
-                    <img src={`http://192.168.1.108:5000${userStories.avatar}`} alt={userStories.username} />
+                    <img src={`${ENDPOINT}${userStories.avatar}`} alt={userStories.username} />
                     <p>{userStories.username}</p>
                 </StoryCircle>
             ))}

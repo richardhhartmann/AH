@@ -188,7 +188,7 @@ const ProfilePage = () => {
         <ProfileWrapper>
             <ProfileHeader>
                 <AvatarContainer>
-                    <Avatar src={`http://192.168.1.108:5000${user.avatar}`} alt={`${user.username}'s avatar`} />
+                    <Avatar src={`${ENDPOINT}${user.avatar}`} alt={`${user.username}'s avatar`} />
                 </AvatarContainer>
                 <ProfileInfo>
                     <UsernameRow>
@@ -217,7 +217,7 @@ const ProfilePage = () => {
                 {posts.map(post => (
                     <Link key={post._id} to={`/post/${post._id}`}>
                         <PostThumbnail>
-                            <img src={`http://192.168.1.108:5000${post.mediaUrl}`} alt={post.caption} />
+                            <img src={`${ENDPOINT}${post.mediaUrl}`} alt={post.caption} />
                         </PostThumbnail>
                     </Link>
                 ))}
@@ -227,7 +227,7 @@ const ProfilePage = () => {
                 {modalUsers.length > 0 ? (
                     modalUsers.map(user => (
                         <UserListItem key={user._id}>
-                            <img src={`http://192.168.1.108:5000${user.avatar}`} alt={user.username} />
+                            <img src={`${ENDPOINT}${user.avatar}`} alt={user.username} />
                             <Link to={`/perfil/${user.username}`} onClick={() => setIsModalOpen(false)}>
                                 <strong>{user.username}</strong>
                             </Link>

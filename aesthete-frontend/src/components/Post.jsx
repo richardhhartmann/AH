@@ -145,7 +145,7 @@ const Post = ({ post: initialPost, onCommentClick }) => {
     <PostContainer>
       <PostHeader>
         <Link to={`/perfil/${post.user.username}`}>
-          <img src={`http://192.168.1.108:5000${post.user.avatar}`} alt={post.user.username} />
+          <img src={`${ENDPOINT}${post.user.avatar}`} alt={post.user.username} />
         </Link>
         <Link to={`/perfil/${post.user.username}`}>
           <strong>{post.user.username}</strong>
@@ -154,7 +154,7 @@ const Post = ({ post: initialPost, onCommentClick }) => {
       </PostHeader>
 
       <Link to={`/post/${post._id}`}>
-        <PostImage src={`http://192.168.1.108:5000${post.mediaUrl}`} alt={post.caption} />
+        <PostImage src={`${ENDPOINT}${post.mediaUrl}`} alt={post.caption} />
       </Link>
       
       <PostActions>

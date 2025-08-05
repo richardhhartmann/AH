@@ -207,7 +207,7 @@ const ChatPage = () => {
                     const otherUser = getOtherUser(chat);
                     return (
                         <ChatItem key={chat._id} onClick={() => setSelectedChat(chat)} isActive={selectedChat?._id === chat._id}>
-                            <img src={`http://192.168.1.108:5000${otherUser.avatar}`} alt={otherUser.username} />
+                            <img src={`${ENDPOINT}${otherUser.avatar}`} alt={otherUser.username} />
                             <span>{otherUser.username}</span>
                         </ChatItem>
                     );

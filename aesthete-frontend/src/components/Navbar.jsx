@@ -207,7 +207,7 @@ const Navbar = () => {
                                     // Mostra resultados da API se estiver digitando
                                     results.map((user) => (
                                         <SearchResultItem key={user._id} onMouseDown={() => handleResultClick(user)}>
-                                            <img src={`http://192.168.1.108:5000${user.avatar}`} alt={user.username} />
+                                            <img src={`${ENDPOINT}${user.avatar}`} alt={user.username} />
                                             <span>{user.username}</span>
                                         </SearchResultItem>
                                     ))
@@ -221,7 +221,7 @@ const Navbar = () => {
                                             </RecentSearchHeader>
                                             {recentSearches.map((user) => (
                                                 <SearchResultItem key={user._id} onMouseDown={() => handleResultClick(user)}>
-                                                    <img src={`http://192.168.1.108:5000${user.avatar}`} alt={user.username} />
+                                                    <img src={`${ENDPOINT}${user.avatar}`} alt={user.username} />
                                                     <span>{user.username}</span>
                                                 </SearchResultItem>
                                             ))}
