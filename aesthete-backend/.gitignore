@@ -1,0 +1,27 @@
+# Dependências
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Variáveis de ambiente
+.env
+
+# Cache do Node
+.cache/
+.pnpm-store/
+.nyc_output/
+
+# Diretórios de build
+dist/
+build/
+
+# Configurações de IDEs/editors
+.vscode/
+.idea/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
