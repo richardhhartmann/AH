@@ -95,7 +95,7 @@ const Placeholder = styled.div`
 `;
 
 // --- Configuração do Socket.IO ---
-const ENDPOINT = 'http://localhost:5000';
+const ENDPOINT = process.env.REACT_APP_API_URL;
 let socket;
 
 // --- Componente ---
@@ -128,7 +128,7 @@ const ChatPage = () => {
         const fetchChats = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-                const { data } = await axios.get('http://localhost:5000/api/chats', config);
+                const { data } = await axios.get(`${ENDPOINT}/api/chats`, config);
                 setChats(data);
 
                 // Se viemos da página de perfil, seleciona o chat automaticamente
@@ -152,7 +152,7 @@ const ChatPage = () => {
         const fetchMessages = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-                const { data } = await axios.get(`http://localhost:5000/api/chats/${selectedChat._id}/messages`, config);
+                const { data } = await axios.get(`${ENDPOINT}/api/chats/${selectedChat._id}/messages`, config);
                 setMessages(data);
                 socket.emit('joinChat', selectedChat._id);
             } catch (error) {
@@ -207,7 +207,7 @@ const ChatPage = () => {
                     const otherUser = getOtherUser(chat);
                     return (
                         <ChatItem key={chat._id} onClick={() => setSelectedChat(chat)} isActive={selectedChat?._id === chat._id}>
-                            <img src={`http://localhost:5000${otherUser.avatar}`} alt={otherUser.username} />
+                            <img src={`http://192.168.1.108:5000${otherUser.avatar}`} alt={otherUser.username} />
                             <span>{otherUser.username}</span>
                         </ChatItem>
                     );

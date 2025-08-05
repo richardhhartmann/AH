@@ -42,7 +42,7 @@ const StoryViewer = ({ userStories, onClose }) => {
             <CloseButton onClick={onClose}>&times;</CloseButton>
             <StoryContent>
                 <StoryImage
-                    src={`http://localhost:5000${userStories.stories[currentIndex].mediaUrl}`}
+                    src={`http://192.168.1.108:5000${userStories.stories[currentIndex].mediaUrl}`}
                     alt={`Story ${currentIndex + 1}`}
                 />
                 {/* Barras de progresso e informações do usuário podem ser adicionadas aqui */}

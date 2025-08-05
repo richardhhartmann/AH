@@ -3,6 +3,8 @@ import axios from 'axios';
 
 // (Você pode reutilizar os styled-components da LoginPage se quiser)
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 const ForgotPasswordPage = () => {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
@@ -11,7 +13,7 @@ const ForgotPasswordPage = () => {
         e.preventDefault();
         setMessage('Enviando e-mail...');
         try {
-            await axios.post('http://localhost:5000/api/auth/forgot-password', { email });
+            await axios.post(`${ENDPOINT}/api/auth/forgot-password`, { email });
             setMessage('Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha.');
         } catch (error) {
             setMessage('Ocorreu um erro. Tente novamente.');

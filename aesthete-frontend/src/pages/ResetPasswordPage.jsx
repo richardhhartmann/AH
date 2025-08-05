@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 const ResetPasswordPage = () => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -17,7 +19,7 @@ const ResetPasswordPage = () => {
         }
 
         try {
-            await axios.put(`http://localhost:5000/api/auth/reset-password/${resettoken}`, { password });
+            await axios.put(`${ENDPOINT}/api/auth/reset-password/${resettoken}`, { password });
             setMessage('Senha redefinida com sucesso! Redirecionando para o login...');
             setTimeout(() => navigate('/login'), 3000);
         } catch (error) {

@@ -5,6 +5,8 @@ import axios from 'axios';
 import Post from '../components/Post'; // Reutilizamos o componente Post
 import styled from 'styled-components';
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 // --- Styled Components ---
 
 const PageContainer = styled.div`
@@ -71,7 +73,7 @@ const SinglePostPage = () => {
         const fetchPostAndComments = async () => {
             try {
                 // Buscamos o post e populamos os usuários dos comentários já existentes
-                const { data } = await axios.get(`http://localhost:5000/api/posts/${postId}?populate=comments.user`);
+                const { data } = await axios.get(`${ENDPOINT}/api/posts/${postId}?populate=comments.user`);
                 setPost(data);
                 setComments(data.comments);
             } catch (error) {
@@ -91,7 +93,7 @@ const SinglePostPage = () => {
         try {
             const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
             const { data: addedComment } = await axios.post(
-                `http://localhost:5000/api/posts/${postId}/comment`,
+                `${ENDPOINT}/api/posts/${postId}/comment`,
                 { text: newComment },
                 config
             );

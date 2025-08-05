@@ -6,6 +6,8 @@ import styled from 'styled-components';
 // Importaremos uma nova ação do Redux que vamos criar
 // import { updateUserProfile } from '../features/auth/authSlice';
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 const EditProfileContainer = styled.div`
     max-width: 600px;
     margin: 20px auto;
@@ -68,7 +70,7 @@ const EditProfilePage = () => {
                 }
             };
             // Lógica para chamar a API e atualizar o estado do Redux viria aqui
-            const { data } = await axios.put('http://localhost:5000/api/users/profile', formData, config);
+            const { data } = await axios.put(`${ENDPOINT}/api/users/profile`, formData, config);
             
             // Atualizar o localStorage e o estado do Redux (IMPORTANTE!)
             localStorage.setItem('user', JSON.stringify(data));

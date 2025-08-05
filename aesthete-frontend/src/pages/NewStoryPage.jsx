@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import styled from 'styled-components';
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 // Estilos para o formulário
 const FormContainer = styled.div`
     display: flex;
@@ -102,7 +104,7 @@ const NewStoryPage = () => {
             };
 
             // 4. Envia a requisição POST para a API do backend
-            await axios.post('http://localhost:5000/api/stories', formData, config);
+            await axios.post(`${ENDPOINT}/api/stories`, formData, config);
 
             alert('Post criado com sucesso!');
             navigate('/'); // Redireciona para o feed após o sucesso
@@ -117,7 +119,6 @@ const NewStoryPage = () => {
         <FormContainer>
             <h2>Criar Nova Publicação</h2>
             <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-                {/* O resto do JSX continua o mesmo... */}
                 <StyledTextarea
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}

@@ -6,6 +6,8 @@ import axios from 'axios';
 
 // --- Styled Components ---
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 const PostContainer = styled.div`
   background-color: #fff;
   border: 1px solid #dbdbdb;
@@ -116,7 +118,7 @@ const Post = ({ post: initialPost, onCommentClick }) => {
         setPost({ ...post, likes: newLikes });
 
         const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-        await axios.post(`http://localhost:5000/api/posts/${post._id}/like`, {}, config);
+        await axios.post(`${ENDPOINT}/api/posts/${post._id}/like`, {}, config);
     } catch (error) {
         console.error("Erro ao curtir o post", error);
         setPost(initialPost);
@@ -127,7 +129,7 @@ const Post = ({ post: initialPost, onCommentClick }) => {
     if (window.confirm("Tem certeza que deseja deletar este post?")) {
         try {
             const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            await axios.delete(`http://localhost:5000/api/posts/${post._id}`, config);
+            await axios.delete(`${ENDPOINT}/api/posts/${post._id}`, config);
             alert("Post deletado com sucesso!");
             window.location.reload(); 
         } catch (error) {
@@ -143,7 +145,7 @@ const Post = ({ post: initialPost, onCommentClick }) => {
     <PostContainer>
       <PostHeader>
         <Link to={`/perfil/${post.user.username}`}>
-          <img src={`http://localhost:5000${post.user.avatar}`} alt={post.user.username} />
+          <img src={`http://192.168.1.108:5000${post.user.avatar}`} alt={post.user.username} />
         </Link>
         <Link to={`/perfil/${post.user.username}`}>
           <strong>{post.user.username}</strong>
@@ -152,7 +154,7 @@ const Post = ({ post: initialPost, onCommentClick }) => {
       </PostHeader>
 
       <Link to={`/post/${post._id}`}>
-        <PostImage src={`http://localhost:5000${post.mediaUrl}`} alt={post.caption} />
+        <PostImage src={`http://192.168.1.108:5000${post.mediaUrl}`} alt={post.caption} />
       </Link>
       
       <PostActions>

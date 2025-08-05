@@ -6,6 +6,8 @@ import Post from '../components/Post';
 import StoriesBar from '../components/StoriesBar'; 
 import StoryViewer from '../components/StoryViewer'; 
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 // --- Styled Components ---
 const HomeContainer = styled.div`
   display: flex;
@@ -43,7 +45,7 @@ const HomePage = () => {
         const config = {
           headers: { Authorization: `Bearer ${loggedInUser.token}` },
         };
-        const { data } = await axios.get('http://localhost:5000/api/posts/feed', config);
+        const { data } = await axios.get(`${ENDPOINT}/api/posts/feed`, config);
         setPosts(data);
       } catch (error) {
         console.error('Falha ao buscar o feed', error);

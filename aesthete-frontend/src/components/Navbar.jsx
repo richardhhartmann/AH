@@ -11,6 +11,8 @@ import { FiLogOut } from "react-icons/fi";
 import { GoHome } from "react-icons/go";
 import { MdOutlineWebStories } from "react-icons/md";
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 const NavWrapper = styled.nav`
   background-color: #fff;
   border-bottom: 1px solid #dbdbdb;
@@ -146,7 +148,7 @@ const Navbar = () => {
     const delayDebounceFn = setTimeout(async () => {
       try {
         const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-        const { data } = await axios.get(`http://localhost:5000/api/users/search?q=${query}`, config);
+        const { data } = await axios.get(`${ENDPOINT}/api/users/search?q=${query}`, config);
         setResults(data);
       } catch (error) {
         console.error("Erro ao buscar usuários", error);
@@ -205,7 +207,7 @@ const Navbar = () => {
                                     // Mostra resultados da API se estiver digitando
                                     results.map((user) => (
                                         <SearchResultItem key={user._id} onMouseDown={() => handleResultClick(user)}>
-                                            <img src={`http://localhost:5000${user.avatar}`} alt={user.username} />
+                                            <img src={`http://192.168.1.108:5000${user.avatar}`} alt={user.username} />
                                             <span>{user.username}</span>
                                         </SearchResultItem>
                                     ))
@@ -219,7 +221,7 @@ const Navbar = () => {
                                             </RecentSearchHeader>
                                             {recentSearches.map((user) => (
                                                 <SearchResultItem key={user._id} onMouseDown={() => handleResultClick(user)}>
-                                                    <img src={`http://localhost:5000${user.avatar}`} alt={user.username} />
+                                                    <img src={`http://192.168.1.108:5000${user.avatar}`} alt={user.username} />
                                                     <span>{user.username}</span>
                                                 </SearchResultItem>
                                             ))}

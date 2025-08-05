@@ -5,6 +5,8 @@ import axios from 'axios';
 import styled from 'styled-components';
 import Modal from '../components/Modal';
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 // --- Styled Components ---
 const ProfileWrapper = styled.div`
   max-width: 935px;
@@ -124,7 +126,7 @@ const ProfilePage = () => {
             setLoading(true);
             try {
                 const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-                const { data } = await axios.get(`http://localhost:5000/api/users/profile/${username}`, config);
+                const { data } = await axios.get(`${ENDPOINT}/api/users/profile/${username}`, config);
                 setProfileData(data);
             } catch (error) {
                 console.error("Erro ao buscar perfil", error);
@@ -139,7 +141,7 @@ const ProfilePage = () => {
         if (!profileData) return;
         try {
             const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            await axios.put(`http://localhost:5000/api/users/follow/${profileData.user._id}`, {}, config);
+            await axios.put(`${ENDPOINT}/api/users/follow/${profileData.user._id}`, {}, config);
             setProfileData(prevData => ({
                 ...prevData,
                 isFollowing: !prevData.isFollowing,
@@ -156,7 +158,7 @@ const ProfilePage = () => {
         setIsModalOpen(true);
         try {
             const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            const { data } = await axios.get(`http://localhost:5000/api/users/${profileData.user._id}/followers`, config);
+            const { data } = await axios.get(`${ENDPOINT}/api/users/${profileData.user._id}/followers`, config);
             setModalUsers(data);
         } catch (error) {
             console.error("Erro ao buscar seguidores", error);
@@ -169,7 +171,7 @@ const ProfilePage = () => {
         setIsModalOpen(true);
         try {
             const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            const { data } = await axios.get(`http://localhost:5000/api/users/${profileData.user._id}/following`, config);
+            const { data } = await axios.get(`${ENDPOINT}/api/users/${profileData.user._id}/following`, config);
             setModalUsers(data);
         } catch (error) {
             console.error("Erro ao buscar usuários que segue", error);
@@ -186,7 +188,7 @@ const ProfilePage = () => {
         <ProfileWrapper>
             <ProfileHeader>
                 <AvatarContainer>
-                    <Avatar src={`http://localhost:5000${user.avatar}`} alt={`${user.username}'s avatar`} />
+                    <Avatar src={`http://192.168.1.108:5000${user.avatar}`} alt={`${user.username}'s avatar`} />
                 </AvatarContainer>
                 <ProfileInfo>
                     <UsernameRow>
@@ -215,7 +217,7 @@ const ProfilePage = () => {
                 {posts.map(post => (
                     <Link key={post._id} to={`/post/${post._id}`}>
                         <PostThumbnail>
-                            <img src={`http://localhost:5000${post.mediaUrl}`} alt={post.caption} />
+                            <img src={`http://192.168.1.108:5000${post.mediaUrl}`} alt={post.caption} />
                         </PostThumbnail>
                     </Link>
                 ))}
@@ -225,7 +227,7 @@ const ProfilePage = () => {
                 {modalUsers.length > 0 ? (
                     modalUsers.map(user => (
                         <UserListItem key={user._id}>
-                            <img src={`http://localhost:5000${user.avatar}`} alt={user.username} />
+                            <img src={`http://192.168.1.108:5000${user.avatar}`} alt={user.username} />
                             <Link to={`/perfil/${user.username}`} onClick={() => setIsModalOpen(false)}>
                                 <strong>{user.username}</strong>
                             </Link>

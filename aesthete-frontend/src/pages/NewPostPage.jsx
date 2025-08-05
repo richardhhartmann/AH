@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import styled from 'styled-components';
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 // Estilos para o formulário
 const FormContainer = styled.div`
     display: flex;
@@ -102,7 +104,7 @@ const NewPostPage = () => {
             };
 
             // 4. Envia a requisição POST para a API do backend
-            await axios.post('http://localhost:5000/api/posts', formData, config);
+            await axios.post(`${ENDPOINT}/api/posts`, formData, config);
 
             alert('Post criado com sucesso!');
             navigate('/'); // Redireciona para o feed após o sucesso

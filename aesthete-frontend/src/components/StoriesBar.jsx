@@ -3,6 +3,8 @@ import { useSelector } from 'react-redux';
 import axios from 'axios';
 import styled from 'styled-components';
 
+const ENDPOINT = process.env.REACT_APP_API_URL;
+
 const StoriesContainer = styled.div`
   display: flex;
   gap: 15px;
@@ -39,7 +41,7 @@ const StoriesBar = ({ onStoryClick }) => {
             if (!loggedInUser) return;
             try {
                 const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-                const { data } = await axios.get('http://localhost:5000/api/stories/feed', config);
+                const { data } = await axios.get(`${ENDPOINT}/api/stories/feed`, config);
                 setStoryFeed(data);
             } catch (error) {
                 console.error("Erro ao buscar stories", error);
@@ -54,7 +56,7 @@ const StoriesBar = ({ onStoryClick }) => {
         <StoriesContainer>
             {storyFeed.map(userStories => (
                 <StoryCircle key={userStories.userId} onClick={() => onStoryClick(userStories)}>
-                    <img src={`http://localhost:5000${userStories.avatar}`} alt={userStories.username} />
+                    <img src={`http://192.168.1.108:5000${userStories.avatar}`} alt={userStories.username} />
                     <p>{userStories.username}</p>
                 </StoryCircle>
             ))}

@@ -16,7 +16,10 @@ connectDB();
 
 const app = express();
 
-app.use(cors({ origin: "https://ah-three.vercel.app" }));
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://ah-three.vercel.app'],
+  credentials: true,
+}));
 
 app.use(express.json());
 
