@@ -18,35 +18,30 @@ const chatSlice = createSlice({
     name: 'chat',
     initialState,
     reducers: {
-        // Reducer para atualizar o estado quando uma mensagem chega via socket
         updateChatStateFromSocket: (state, action) => {
-            const newMessage = action.payload;
-            let totalUnread = 0;
+            // Agora esperamos um payload com 'newMessage' e 'loggedInUserId'
+            const { newMessage, loggedInUserId } = action.payload;
+
             let chatExists = false;
 
             const updatedChats = state.chats.map(chat => {
                 if (chat._id === newMessage.chat._id) {
                     chatExists = true;
-                    // Incrementa o contador de não lidas apenas se a mensagem não for minha
-                    const newUnreadCount = (chat.unreadCount || 0) + (newMessage.sender._id !== action.meta.arg.userId ? 1 : 0);
+                    // A verificação agora usa o 'loggedInUserId' que passamos no payload
+                    const newUnreadCount = (chat.unreadCount || 0) + (newMessage.sender._id !== loggedInUserId ? 1 : 0);
                     return { ...chat, lastMessage: newMessage, unreadCount: newUnreadCount };
                 }
                 return chat;
             });
-            
-            // Se o chat for novo e não estiver na lista, buscamos tudo de novo
-            if (!chatExists) {
-                // Esta é uma simplificação. Uma app mais complexa adicionaria o novo chat.
-                // Por agora, vamos manter assim.
+
+            if (chatExists) {
+                const chatToMove = updatedChats.find(chat => chat._id === newMessage.chat._id);
+                const otherChats = updatedChats.filter(chat => chat._id !== newMessage.chat._id);
+                state.chats = [chatToMove, ...otherChats];
             }
-
+            
             // Recalcula o total de não lidas
-            updatedChats.forEach(chat => {
-                totalUnread += chat.unreadCount || 0;
-            });
-
-            state.chats = updatedChats.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-            state.totalUnreadCount = totalUnread;
+            state.totalUnreadCount = state.chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
         },
         // Reducer para zerar a contagem de um chat específico
         markChatAsReadInState: (state, action) => {

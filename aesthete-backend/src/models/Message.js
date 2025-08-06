@@ -11,15 +11,17 @@ const MessageSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-    content: {
-        type: String,
-        trim: true,
-        required: true
-    },
     readBy: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
-    }]
+    }],
+    content: { type: String, trim: true }, // URL para áudio/imagem, ou texto
+    contentType: {
+        type: String,
+        enum: ['text', 'audio'],
+        default: 'text'
+    },
+    audioDuration: { type: Number } // Em segundos
 }, { timestamps: true });
 
 module.exports = mongoose.model('Message', MessageSchema);

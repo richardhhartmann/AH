@@ -251,7 +251,7 @@ const Navbar = () => {
         });
 
         socket.on('messageReceived', (newMessage) => {
-            dispatch(updateChatStateFromSocket({ ...newMessage, meta: { arg: { userId: loggedInUser._id } } }));
+          dispatch(updateChatStateFromSocket({ newMessage, loggedInUserId: loggedInUser._id }));
         });
 
         return () => { socket.disconnect(); };

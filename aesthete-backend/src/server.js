@@ -1,16 +1,15 @@
-// aesthete-backend/src/server.js (VERSÃO CORRIGIDA E FINAL)
+// aesthete-backend/src/server.js (VERSÃO CORRIGIDA)
 
 const express = require('express');
 const http = require('http');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const path = require('path'); // Importe o módulo 'path' do Node.js
+const path = require('path');
 
-// 1. Configure o dotenv PRIMEIRO, especificando o caminho correto do arquivo .env
-// que está na pasta raiz do backend, um nível acima da pasta 'src'.
+// Configure o dotenv PRIMEIRO
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-// 2. AGORA, importe os outros módulos que dependem das variáveis de ambiente.
+// AGORA, importe os outros módulos
 const connectDB = require('./config/db');
 const { initSocket } = require('./sockets/socketManager');
 const authRoutes = require('./routes/authRoutes');
@@ -24,6 +23,8 @@ const notificationRoutes = require('./routes/notificationRoutes');
 connectDB();
 
 const app = express();
+const server = http.createServer(app);
+const io = initSocket(server);
 
 // Configuração de CORS
 const allowedOrigins = ['http://localhost:3000', 'https://ah-three.vercel.app'];
@@ -39,28 +40,27 @@ app.use(cors({
 
 // Middlewares essenciais
 app.use(express.json());
-// Servir arquivos estáticos da pasta 'uploads'
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// --- CORREÇÃO: MOVA ESTE BLOCO PARA CÁ ---
+// Middleware para anexar 'io' a cada requisição.
+// DEVE VIR ANTES DAS ROTAS para que req.io esteja disponível nelas.
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
 
 // Rotas da API
 app.get('/api', (req, res) => res.send('API da Aesthete está no ar!'));
 app.use('/api/auth', authRoutes);
-app.use('/api/posts', postRoutes); // Rota de Posts
-app.use('/api/stories', storyRoutes); // Rota de Stories
+app.use('/api/posts', postRoutes);
+app.use('/api/stories', storyRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 // Configuração do Servidor
 const PORT = process.env.PORT || 10000;
-const server = http.createServer(app);
-const io = initSocket(server);
-
-// Middleware para anexar 'io' a cada requisição
-app.use((req, res, next) => {
-    req.io = io;
-    next();
-});
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Servidor rodando na porta ${PORT}`);

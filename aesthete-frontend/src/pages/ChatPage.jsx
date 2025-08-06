@@ -4,10 +4,33 @@ import { useLocation, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import io from 'socket.io-client';
-import { FiCheck } from "react-icons/fi";
+import { FiCheck, FiSend } from "react-icons/fi";
+import { FaMicrophone } from 'react-icons/fa';
 import { fetchChats, markChatAsReadInState, updateChatStateFromSocket } from '../features/chat/chatSlice';
+import AudioPlayer from '../components/AudioPlayer';
 
 // --- Styled Components ---
+
+const MicButton = styled.button`
+  background-color: ${props => props.isRecording ? 'red' : 'rgb(254, 121, 13)'};
+    color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 1.2rem;
+  
+  &:disabled {
+    background-color: #fbdac0;
+    cursor: not-allowed;
+  }
+`;
+
 const ChatContainer = styled.div`
   display: flex;
   height: calc(100vh - 90px);
@@ -119,20 +142,43 @@ const MessageBubble = styled.div`
   border-radius: 20px;
   margin-bottom: 10px;
   align-self: ${props => props.isMe ? 'flex-end' : 'flex-start'};
-  background-color: ${props => props.isMe ? 'rgba(255, 142, 50, 1)' : '#efefef'};
+  background-color: ${props => props.isMe ? 'rgb(254, 121, 13)' : '#efefef'};
   color: ${props => props.isMe ? 'white' : 'black'};
 `;
 
 const MessageForm = styled.form`
   display: flex;
+  align-items: center;
   padding: 10px;
   border-top: 1px solid #dbdbdb;
+  
   input {
     flex-grow: 1;
     border: 1px solid #dbdbdb;
     border-radius: 20px;
     padding: 10px 15px;
     outline: none;
+    margin-right: 10px;
+  }
+`;
+
+const SendButton = styled.button`
+  background-color: rgb(254, 121, 13);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 1.2rem;
+  
+  &:disabled {
+    background-color: #fbdac0;
+    cursor: not-allowed;
   }
 `;
 
@@ -147,7 +193,6 @@ const Placeholder = styled.div`
 
 // --- Configuração ---
 const ENDPOINT = process.env.REACT_APP_API_URL;
-let socket;
 let typingTimeout;
 
 // --- Componente ---
@@ -158,11 +203,83 @@ const ChatPage = () => {
     const { user: loggedInUser } = useSelector((state) => state.auth);
     const { chats } = useSelector((state) => state.chat);
 
+    const [socket, setSocket] = useState(null);
     const [selectedChat, setSelectedChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [typingChats, setTypingChats] = useState([]);
+    const [isRecording, setIsRecording] = useState(false);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const streamRef = useRef(null);
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            
+            let audioChunks = [];
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                sendAudio(audioBlob);
+                stream.getTracks().forEach(track => track.stop()); // Para de usar o microfone
+            };
+            
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (err) {
+            console.error("Erro ao acessar o microfone:", err);
+            alert("É necessário permitir o acesso ao microfone para enviar áudios.");
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            mediaRecorderRef.current.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                
+                const duration = await getAudioDuration(audioBlob);
+                
+                sendAudio(audioBlob, duration);
+                
+                streamRef.current.getTracks().forEach(track => track.stop());
+                audioChunksRef.current = [];
+            };
+            mediaRecorderRef.current.stop();
+        }
+        setIsRecording(false);
+    };
+
+    const sendAudio = async (audioBlob, duration) => {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append('chatId', selectedChat._id);
+        formData.append('duration', duration); // <-- Enviando a duração
+        
+        try {
+            // A API agora retorna a mensagem completa, incluindo a duração correta
+            const { data: newAudioMessage } = await api.post('/chats/upload-audio', formData);
+
+            // Atualiza a UI local
+            setMessages(prev => [...prev, newAudioMessage]);
+            dispatch(updateChatStateFromSocket({ newMessage: newAudioMessage, loggedInUserId: loggedInUser._id }));
+        } catch (error) {
+            console.error("Erro ao enviar áudio:", error);
+        }
+    };
+
+    const formatTime = (timeInSeconds) => {
+        if (!timeInSeconds) return "0:00";
+        const minutes = Math.floor(timeInSeconds / 60);
+        const seconds = Math.floor(timeInSeconds % 60);
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
     
     const messagesEndRef = useRef(null);
     const selectedChatRef = useRef(null);
@@ -174,7 +291,7 @@ const ChatPage = () => {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
-
+    
     const handleSelectChat = useCallback(async (chat) => {
         setSelectedChat(chat);
         if (chat.unreadCount > 0) {
@@ -188,6 +305,34 @@ const ChatPage = () => {
     }, [dispatch]);
 
     useEffect(() => {
+        if (!loggedInUser) return;
+
+        const newSocket = io(ENDPOINT);
+        setSocket(newSocket);
+        
+        newSocket.emit('setup', loggedInUser);
+
+        const onlineUsersListener = (users) => setOnlineUsers(users);
+        const messageListener = (newMessageReceived) => {
+            if (selectedChatRef.current?._id === newMessageReceived.chat._id) {
+                setMessages(prev => [...prev, newMessageReceived]);
+            }
+            dispatch(updateChatStateFromSocket({ newMessage: newMessageReceived, loggedInUserId: loggedInUser._id }));
+        };
+        const typingListener = (chatId) => setTypingChats(prev => [...new Set([...prev, chatId])]);
+        const stopTypingListener = (chatId) => setTypingChats(prev => prev.filter(id => id !== chatId));
+
+        newSocket.on('onlineUsers', onlineUsersListener);
+        newSocket.on('messageReceived', messageListener);
+        newSocket.on('typing', typingListener);
+        newSocket.on('stopTyping', stopTypingListener);
+
+        return () => {
+            newSocket.disconnect();
+        };
+    }, [loggedInUser, dispatch]);
+
+    useEffect(() => {
         if (location.state?.chatId && chats.length > 0) {
             const chatToSelect = chats.find(c => c._id === location.state.chatId);
             if (chatToSelect) {
@@ -197,19 +342,19 @@ const ChatPage = () => {
     }, [chats, location.state, handleSelectChat]);
     
     useEffect(() => {
-        if (!selectedChat) return;
+        if (!selectedChat || !socket) return;
         
         const fetchMessages = async () => {
             try {
                 const { data } = await api.get(`/chats/${selectedChat._id}/messages`);
                 setMessages(data);
-                if(socket) socket.emit('joinChat', selectedChat._id);
+                socket.emit('joinChat', selectedChat._id);
             } catch (error) { 
                 console.error("Erro ao buscar mensagens", error); 
             }
         };
         fetchMessages();
-    }, [selectedChat]);
+    }, [selectedChat, socket]);
 
     const handleTyping = (e) => {
         setNewMessage(e.target.value);
@@ -223,7 +368,7 @@ const ChatPage = () => {
 
     const sendMessage = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !selectedChat) return;
+        if (!socket || !newMessage.trim() || !selectedChat) return;
         
         socket.emit('stopTyping', selectedChat._id);
         
@@ -237,15 +382,29 @@ const ChatPage = () => {
         socket.emit('newMessage', tempMessage);
         setMessages(prev => [...prev, tempMessage]);
         setNewMessage('');
-        
-        // Atualiza a lista de conversas no Redux
-        dispatch(updateChatStateFromSocket({ ...tempMessage, meta: { arg: { userId: loggedInUser._id } } }));
+        dispatch(updateChatStateFromSocket({ newMessage: tempMessage, loggedInUserId: loggedInUser._id }));
     };
 
     const getOtherUser = (chat) => {
         if (!chat?.participants) return null;
         return chat.participants.find(p => p._id !== loggedInUser._id);
     };
+
+    const handleMicClick = () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    };
+
+    const getAudioDuration = (file) => new Promise(resolve => {
+        const audio = document.createElement('audio');
+        audio.src = URL.createObjectURL(file);
+        audio.onloadedmetadata = () => {
+            resolve(audio.duration);
+        };
+    });
 
     return (
         <ChatContainer>
@@ -275,7 +434,20 @@ const ChatPage = () => {
                                         {chat.lastMessage?.sender?._id === loggedInUser._id && (
                                             <FiCheck size={16} title="Enviado por você"/>
                                         )}
-                                        {chat.lastMessage ? chat.lastMessage.content : 'Inicie a conversa'}
+                                        
+                                        {chat.lastMessage ? (
+                                            chat.lastMessage.contentType === 'audio' ? (
+                                                <>
+                                                    <FaMicrophone size={14} />
+                                                    {/* Usamos a função formatTime que você já deve ter */}
+                                                    <span>Mensagem de voz ({formatTime(chat.lastMessage.audioDuration)})</span>
+                                                </>
+                                            ) : (
+                                                chat.lastMessage.content
+                                            )
+                                        ) : (
+                                            'Inicie a conversa'
+                                        )}
                                     </LastMessage>
                                 )}
                             </ChatInfo>
@@ -295,7 +467,15 @@ const ChatPage = () => {
                     <MessageList>
                         {messages.map((msg, i) => (
                             <MessageBubble key={msg._id || i} isMe={msg.sender._id === loggedInUser._id}>
-                                {msg.content}
+                                {msg.contentType === 'audio' ? (
+                                    <AudioPlayer 
+                                        src={msg.content} 
+                                        duration={msg.audioDuration}
+                                        isMe={msg.sender._id === loggedInUser._id}
+                                    />
+                                ) : (
+                                    msg.content
+                                )}
                             </MessageBubble>
                         ))}
                         <div ref={messagesEndRef} />
@@ -307,6 +487,19 @@ const ChatPage = () => {
                             value={newMessage}
                             onChange={handleTyping}
                         />
+                        {newMessage ? (
+                            <SendButton type="submit" disabled={!newMessage.trim()}>
+                                <FiSend />
+                            </SendButton>
+                        ) : (
+                            <MicButton
+                                type="button"
+                                onClick={handleMicClick}
+                                isRecording={isRecording}
+                            >
+                                <FaMicrophone />
+                            </MicButton>
+                        )}
                     </MessageForm>
                 </ChatWindow>
             ) : ( <Placeholder>Selecione uma conversa para começar.</Placeholder> )}
