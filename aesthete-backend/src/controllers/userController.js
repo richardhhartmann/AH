@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Post = require('../models/Post');
 const Story = require('../models/Story');
+const Notification = require('../models/Notification');
 const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
@@ -67,31 +68,54 @@ exports.followUser = async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Erro no servidor' });
     }
+
+    if (!currentUser.following.includes(req.params.id)) {
+    currentUser.following.push(req.params.id);
+    userToFollow.followers.push(req.user.id);
+    
+    // Cria a notificação
+    const notification = new Notification({
+        recipient: userToFollow._id,
+        sender: req.user.id,
+        type: 'follow'
+    });
+    await notification.save();
+
+    const populatedNotification = await Notification.findById(notification._id)
+        .populate('sender', 'username avatar');
+
+    req.io.to(userToFollow._id.toString()).emit('newNotification', populatedNotification);
+    
+}
 };
 
+// @desc    Atualizar o perfil do usuário
+// @route   PUT /api/users/profile
 exports.updateUserProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
 
         if (user) {
-            user.username = req.body.username || user.username;
-            user.email = req.body.email || user.email;
-            user.bio = req.body.bio || user.bio;
-            user.profession = req.body.profession || user.profession;
 
-            // Se uma nova foto de perfil foi enviada
-            if (req.file) {
-                // Opcional: deletar a foto antiga se não for a padrão
-                if (user.avatar && user.avatar !== 'default_avatar_url') {
-                    const oldAvatarPath = path.join(__dirname, '..', '..', user.avatar);
-                    if (fs.existsSync(oldAvatarPath)) {
-                        fs.unlinkSync(oldAvatarPath);
-                    }
-                }
-                user.avatar = req.file.path;
+            if (req.body.username && req.body.username !== '') {
+                user.username = req.body.username;
             }
 
-            // Se uma nova senha foi fornecida
+            if (req.body.email && req.body.email !== '' && req.body.email !== 'undefined') {
+                user.email = req.body.email;
+            }
+
+            if ('bio' in req.body) {
+                user.bio = req.body.bio;
+            }
+            if ('profession' in req.body) {
+                user.profession = req.body.profession;
+            }
+
+            if (req.file) {
+                user.avatar = req.file.path.replace('http://', 'https://');
+            }
+
             if (req.body.password) {
                 user.password = req.body.password;
             }
@@ -104,15 +128,15 @@ exports.updateUserProfile = async (req, res) => {
                 email: updatedUser.email,
                 bio: updatedUser.bio,
                 avatar: updatedUser.avatar,
-                // Retornamos um novo token caso o username ou outras infos importantes mudem
+                profession: updatedUser.profession,
                 token: jwt.sign({ id: updatedUser._id }, process.env.JWT_SECRET, { expiresIn: '30d' }),
             });
         } else {
             res.status(404).json({ message: 'Usuário não encontrado' });
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Erro no servidor' });
+        console.error("ERRO AO ATUALIZAR PERFIL:", error);
+        res.status(500).json({ message: 'Erro no servidor ao atualizar o perfil.' });
     }
 };
 

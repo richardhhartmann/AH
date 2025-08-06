@@ -2,9 +2,12 @@ const Message = require('../models/Message');
 const Chat = require('../models/Chat');
 
 const initSocket = (server) => {
+    const allowedOrigins = ['http://localhost:3000', 'https://ah-three.vercel.app'];
+
     const io = require('socket.io')(server, {
         cors: {
-            origin: "https://ah-three.vercel.app/",
+            origin: allowedOrigins,
+            methods: ["GET", "POST"]
         }
     });
 
@@ -61,6 +64,7 @@ const initSocket = (server) => {
             console.log('Cliente desconectado:', socket.id);
         });
     });
+    return io;
 };
 
 module.exports = { initSocket };

@@ -1,7 +1,8 @@
 const Post = require('../models/Post');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 const fs = require('fs');
-const path = require('path'); // <-- A LINHA QUE FALTAVA
+const path = require('path');
 
 // @desc    Criar um novo post
 // @route   POST /api/posts
@@ -17,7 +18,7 @@ exports.createPost = async (req, res) => {
 
         // 3. Pegamos o caminho do arquivo salvo pelo multer
         // O req.file.path pode vir com barras invertidas (\) no Windows. Convertemos para barras normais (/) para consistência de URL.
-        const mediaUrl = req.file.path;
+        const mediaUrl = req.file.path.replace('http://', 'https://');
 
         const post = new Post({
             caption,
@@ -71,6 +72,21 @@ exports.likePost = async (req, res) => {
         res.json({ message: 'Interação registrada' });
     } else {
         res.status(404).json({ message: 'Post não encontrado' });
+    }
+
+    if (!post.likes.includes(req.user.id)) {
+        post.likes.push(req.user.id);
+
+        // Só cria notificação se não for o próprio post
+        if (post.user.toString() !== req.user.id) {
+            const notification = new Notification({
+                recipient: post.user,
+                sender: req.user.id,
+                type: 'like',
+                post: post._id
+            });
+            await notification.save();
+        }
     }
 };
 
