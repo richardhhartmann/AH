@@ -77,18 +77,25 @@ const ChatButton = styled(ActionButton)`
 const StatsRow = styled.div`
   display: flex;
   margin-bottom: 20px;
+
   p {
     margin-right: 40px;
     font-size: 16px;
-    cursor: pointer;
-    &:hover { text-decoration: underline; }
 
     strong {
       font-weight: 600;
-      color: rgb(254, 121, 13); /* Aqui está a mudança */
+      color: rgb(254, 121, 13);
+    }
+  }
+
+  p.clickable {
+    cursor: pointer;
+    &:hover {
+      text-decoration: underline;
     }
   }
 `;
+
 
 const Bio = styled.div`
   p {
@@ -201,9 +208,31 @@ const ProfilePage = () => {
         }
     };
     
-    // Funções para abrir os modais (seguidores/seguindo)
-    const openFollowersModal = async () => { /* ... sua função ... */ };
-    const openFollowingModal = async () => { /* ... sua função ... */ };
+    const openFollowersModal = async () => {
+        if (!profileData) return;
+        setModalTitle('Seguidores');
+        setIsModalOpen(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
+            const { data } = await api.get(`http://localhost:5000/api/users/${profileData.user._id}/followers`, config);
+            setModalUsers(data);
+        } catch (error) {
+            console.error("Erro ao buscar seguidores", error);
+        }
+    };
+
+    const openFollowingModal = async () => {
+        if (!profileData) return;
+        setModalTitle('Seguindo');
+        setIsModalOpen(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
+            const { data } = await api.get(`http://localhost:5000/api/users/${profileData.user._id}/following`, config);
+            setModalUsers(data);
+        } catch (error) {
+            console.error("Erro ao buscar usuários que segue", error);
+        }
+    };
 
     if (loading) return <p>Carregando perfil...</p>;
     if (!profileData) return <p>Usuário não encontrado.</p>;
@@ -244,8 +273,12 @@ const ProfilePage = () => {
                     {user.profession && <Profession>{user.profession}</Profession>}
                     <StatsRow>
                         <p><strong>{postCount}</strong> publicações</p>
-                        <p onClick={openFollowersModal}><strong>{followerCount}</strong> seguidores</p>
-                        <p onClick={openFollowingModal}><strong>{followingCount}</strong> seguindo</p>
+                        <p className="clickable" onClick={openFollowersModal}>
+                            <strong>{followerCount}</strong> seguidores
+                        </p>
+                        <p className="clickable" onClick={openFollowingModal}>
+                            <strong>{followingCount}</strong> seguindo
+                        </p>
                     </StatsRow>
                     <Bio>
                         <span>{user.bio}</span>
@@ -264,7 +297,23 @@ const ProfilePage = () => {
             </PostGrid>
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalTitle}>
-                 {/* ... conteúdo do modal ... */}
+                {modalUsers.length > 0 ? (
+                    modalUsers.map(user => (
+                        <UserListItem key={user._id}>
+                            <img 
+                                src={
+                                    user.avatar?.startsWith('http')
+                                        ? user.avatar
+                                        : `${API_URL}${user.avatar || '/uploads/avatars/default.jpg'}`
+                                } 
+                                alt={user.username} 
+                            />
+                            <Link to={`/perfil/${user.username}`}>{user.username}</Link>
+                        </UserListItem>
+                    ))
+                ) : (
+                    <p style={{ padding: '10px' }}>Nenhum usuário encontrado.</p>
+                )}
             </Modal>
 
             {isViewerOpen && userActiveStories && (
