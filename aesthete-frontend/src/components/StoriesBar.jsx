@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import styled from 'styled-components';
 
@@ -50,11 +51,32 @@ const StoriesBar = ({ onStoryClick }) => {
         fetchStories();
     }, [loggedInUser]);
 
+    // Separa o seu story dos outros
+    const myStories = storyFeed.find(userStories => userStories.userId === loggedInUser._id);
+    const otherStories = storyFeed.filter(userStories => userStories.userId !== loggedInUser._id);
+
+    // Não renderiza a barra se não houver stories de ninguém
     if (storyFeed.length === 0) return null;
 
     return (
         <StoriesContainer>
-            {storyFeed.map(userStories => (
+            {/* Renderiza seu story primeiro, com um link para criar um novo */}
+            {myStories ? (
+                <StoryCircle onClick={() => onStoryClick(myStories)}>
+                    <img src={`${ENDPOINT}${myStories.avatar}`} alt={myStories.username} />
+                    <p>Seu story</p>
+                </StoryCircle>
+            ) : (
+                <Link to="/stories/novo" style={{textDecoration: 'none'}}>
+                    <StoryCircle>
+                        <img src={`${ENDPOINT}${loggedInUser.avatar}`} alt="Adicionar story" style={{ border: '2px dashed #dbdbdb' }} />
+                        <p>Adicionar</p>
+                    </StoryCircle>
+                </Link>
+            )}
+
+            {/* Renderiza os stories dos outros */}
+            {otherStories.map(userStories => (
                 <StoryCircle key={userStories.userId} onClick={() => onStoryClick(userStories)}>
                     <img src={`${ENDPOINT}${userStories.avatar}`} alt={userStories.username} />
                     <p>{userStories.username}</p>

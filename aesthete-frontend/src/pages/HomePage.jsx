@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import Post from '../components/Post';
 import StoriesBar from '../components/StoriesBar'; 
 import StoryViewer from '../components/StoryViewer'; 
+import Suggestions from '../components/Suggestions';
 
 const ENDPOINT = process.env.REACT_APP_API_URL;
 
@@ -71,19 +72,18 @@ const HomePage = () => {
   }
 
   return (
-    <HomeContainer>
-      <FeedColumn>
-        <StoriesBar onStoryClick={(userStories) => setViewingUserStories(userStories)} />
-            {posts.length > 0 ? (
-            posts.map((post) => <Post key={post._id} post={post} />)
-            ) : (
-            <WelcomeMessage>
-                <h2>Seu feed está vazio</h2>
-                <p>Siga outros usuários para ver as publicações deles aqui.</p>
-            </WelcomeMessage>
-            )}
-      </FeedColumn>
-      {/* A SidebarColumn pode ser adicionada aqui no futuro */}
+        <HomeContainer>
+            <FeedColumn>
+                <StoriesBar onStoryClick={(userStories) => setViewingUserStories(userStories)} />
+                
+                {posts.length > 0 ? (
+                    // Se houver posts, mostra o feed
+                    posts.map((post) => <Post key={post._id} post={post} />)
+                ) : (
+                    // Se não houver posts, mostra as sugestões
+                    <Suggestions />
+                )}
+            </FeedColumn>
     {viewingUserStories && (
     <StoryViewer 
                     userStories={viewingUserStories} 

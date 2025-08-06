@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { logout, reset } from '../features/auth/authSlice';
 import styled from 'styled-components';
 import axios from 'axios';
-
+import logoImage from '../assets/images/logo.jpg';
 import { IoAddCircleOutline } from "react-icons/io5";
 import { CgProfile } from "react-icons/cg";
 import { FiLogOut } from "react-icons/fi";
@@ -14,7 +14,7 @@ import { MdOutlineWebStories } from "react-icons/md";
 const ENDPOINT = process.env.REACT_APP_API_URL;
 
 const NavWrapper = styled.nav`
-  background-color: #fff;
+  background-color: rgb(255, 240, 233);
   border-bottom: 1px solid #dbdbdb;
   position: sticky;
   top: 0;
@@ -32,11 +32,11 @@ const NavContainer = styled.div`
 `;
 
 const Logo = styled(Link)`
-  font-family: "PT Sans", sans-serif;
-  font-weight: 700;
-  font-size: 2.5rem;
-  text-decoration: none;
-  color: #262626;
+  /* Removemos os estilos de fonte */
+  img {
+    height: 50px; /* Ajuste a altura conforme necessário */
+    vertical-align: middle; /* Ajuda a alinhar a imagem verticalmente com os ícones */
+  }
 `;
 
 const NavLinks = styled.div`
@@ -190,7 +190,9 @@ const Navbar = () => {
   return (
         <NavWrapper>
             <NavContainer>
-                <Logo to="/">AH</Logo>
+                <Logo to="/">
+                  <img src={logoImage} alt="Aesthete Logo" />
+                </Logo>
                 {loggedInUser && (
                     <SearchWrapper>
                         <SearchInput

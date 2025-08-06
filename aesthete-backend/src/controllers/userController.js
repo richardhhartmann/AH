@@ -80,6 +80,7 @@ exports.updateUserProfile = async (req, res) => {
             user.username = req.body.username || user.username;
             user.email = req.body.email || user.email;
             user.bio = req.body.bio || user.bio;
+            user.profession = req.body.profession || user.profession;
 
             // Se uma nova foto de perfil foi enviada
             if (req.file) {
@@ -167,6 +168,22 @@ exports.getFollowing = async (req, res) => {
         }
         
         res.json(user.following);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor' });
+    }
+};
+
+// @desc    Buscar sugestões de usuários para seguir
+// @route   GET /api/users/suggestions
+exports.getUserSuggestions = async (req, res) => {
+    try {
+        const currentUser = await User.findById(req.user.id);
+        const usersToExclude = [...currentUser.following, req.user.id];
+        const users = await User.find({ _id: { $nin: usersToExclude } })
+            .select('username avatar bio')
+            .limit(10);
+        res.json(users);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erro no servidor' });

@@ -8,9 +8,10 @@ const RegisterPage = () => {
         username: '',
         email: '',
         password: '',
+        profession: '',
     });
 
-    const { username, email, password } = formData;
+    const { username, email, password, profession } = formData;
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -39,7 +40,7 @@ const RegisterPage = () => {
 
     const onSubmit = (e) => {
         e.preventDefault();
-        const userData = { username, email, password };
+        const userData = { username, email, password, profession }; // <-- Adicione aqui
         dispatch(register(userData));
     };
     
@@ -75,6 +76,15 @@ const RegisterPage = () => {
                     onChange={onChange}
                     required
                 />
+                <select name="profession" value={profession} onChange={onChange} required>
+                    <option value="" disabled>Selecione sua profissão</option>
+                    <option value="Especialista em Posicionamento">Especialista em Posicionamento</option>
+                    <option value="Biomédico">Biomédico</option>
+                    <option value="Programador">Programador</option>
+                    <option value="Esteticista">Esteticista</option>
+                    <option value="Dermatologista">Dermatologista</option>
+                    {/* Adicione as outras opções aqui */}
+                </select>
                 <button type="submit">Cadastrar</button>
             </form>
         </div>

@@ -10,14 +10,14 @@ const generateToken = (id) => {
 // @desc    Registrar um novo usuário
 // @route   POST /api/auth/register
 exports.registerUser = async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, email, password, profession } = req.body;
 
     const userExists = await User.findOne({ email });
     if (userExists) {
         return res.status(400).json({ message: 'Usuário já existe' });
     }
 
-    const user = await User.create({ username, email, password });
+    const user = await User.create({ username, email, password, profession });
 
     if (user) {
         res.status(201).json({
@@ -25,6 +25,7 @@ exports.registerUser = async (req, res) => {
             username: user.username,
             email: user.email,
             token: generateToken(user._id),
+            profession: user.profession 
         });
     } else {
         res.status(400).json({ message: 'Dados inválidos' });

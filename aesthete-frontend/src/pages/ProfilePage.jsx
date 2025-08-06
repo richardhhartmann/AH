@@ -8,6 +8,14 @@ import Modal from '../components/Modal';
 const ENDPOINT = process.env.REACT_APP_API_URL;
 
 // --- Styled Components ---
+const Profession = styled.p`
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f58529; /* Laranja */
+  margin-top: -10px; /* Ajuste para ficar mais perto do nome */
+  margin-bottom: 20px;
+`;
+
 const ProfileWrapper = styled.div`
   max-width: 935px;
   margin: 0 auto;
@@ -116,6 +124,7 @@ const ProfilePage = () => {
     const { username } = useParams();
     const { user: loggedInUser } = useSelector((state) => state.auth);
     const [profileData, setProfileData] = useState(null);
+    const [hasActiveStory, setHasActiveStory] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTitle, setModalTitle] = useState('');
@@ -128,6 +137,9 @@ const ProfilePage = () => {
                 const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
                 const { data } = await axios.get(`${ENDPOINT}/api/users/profile/${username}`, config);
                 setProfileData(data);
+                const storyFeedResponse = await axios.get('.../api/stories/feed', config);
+                const userHasStory = storyFeedResponse.data.some(userStories => userStories.userId === data.user._id);
+                setHasActiveStory(userHasStory);
             } catch (error) {
                 console.error("Erro ao buscar perfil", error);
             } finally {
@@ -188,7 +200,11 @@ const ProfilePage = () => {
         <ProfileWrapper>
             <ProfileHeader>
                 <AvatarContainer>
-                    <Avatar src={`${ENDPOINT}${user.avatar}`} alt={`${user.username}'s avatar`} />
+                    <Avatar 
+                        src={`${ENDPOINT}${user.avatar}`} 
+                        alt={`${user.username}'s avatar`}
+                        hasStory={hasActiveStory}
+                    />
                 </AvatarContainer>
                 <ProfileInfo>
                     <UsernameRow>
@@ -201,6 +217,7 @@ const ProfilePage = () => {
                             </ActionButton>
                         )}
                     </UsernameRow>
+                    {user.profession && <Profession>{user.profession}</Profession>}
                     <StatsRow>
                         <p><strong>{postCount}</strong> publicações</p>
                         <p onClick={openFollowersModal}><strong>{followerCount}</strong> seguidores</p>

@@ -11,6 +11,21 @@ const UserSchema = new mongoose.Schema({
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+    profession: {
+        type: String,
+        enum: [
+            "Especialista em Posicionamento",
+            "Biomédico",
+            "Programador",
+            "Esteticista",
+            "Dermatologista",
+            "Designer de Sobrancelhas",
+            "Maquiador(a)",
+            "Fisioterapeuta Dermatofuncional",
+            "Micropigmentador(a)",
+            "Cabeleireiro(a)"
+        ]
+    },
 }, { timestamps: true });
 
 // Criptografar senha antes de salvar

@@ -30,11 +30,12 @@ exports.createStory = async (req, res) => {
 exports.getStoryFeed = async (req, res) => {
     try {
         const currentUser = await User.findById(req.user.id);
-        const followingIds = currentUser.following;
+
+        const userIdsToSearch = [...currentUser.following, req.user.id];
 
         // Encontra stories dos usuários seguidos que ainda não expiraram
         const stories = await Story.find({
-            user: { $in: followingIds },
+            user: { $in: userIdsToSearch }, // Usamos a nova lista na busca
             expiresAt: { $gt: new Date() }
         }).populate('user', 'username avatar');
 

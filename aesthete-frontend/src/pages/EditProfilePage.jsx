@@ -38,7 +38,8 @@ const EditProfilePage = () => {
 
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
-    const [bio, setBio] = useState('');
+    const [bio, setBio] = useState(currentUser?.bio || '');
+    const [profession, setProfession] = useState(currentUser?.profession || '');
     const [password, setPassword] = useState('');
     const [avatar, setAvatar] = useState(null);
 
@@ -57,6 +58,7 @@ const EditProfilePage = () => {
         formData.append('username', username);
         formData.append('email', email);
         formData.append('bio', bio);
+        formData.append('profession', profession);
         if (password) formData.append('password', password);
         if (avatar) {
             formData.append('avatar', avatar); // <-- O NOME DO CAMPO DEVE SER 'avatar'
@@ -108,6 +110,18 @@ const EditProfilePage = () => {
                 <FormGroup>
                     <label htmlFor="password">Nova Senha (deixe em branco para não alterar)</label>
                     <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </FormGroup>
+                <FormGroup>
+                    <label htmlFor="profession">Profissão</label>
+                    <select id="profession" value={profession} onChange={(e) => setProfession(e.target.value)}>
+                        <option value="" disabled>Selecione sua profissão</option>
+                        <option value="Especialista em Posicionamento">Especialista em Posicionamento</option>
+                        <option value="Biomédico">Biomédico</option>
+                        <option value="Programador">Programador</option>
+                        <option value="Esteticista">Esteticista</option>
+                        <option value="Dermatologista">Dermatologista</option>
+                        {/* Adicione as outras opções aqui */}
+                    </select>
                 </FormGroup>
                 <button type="submit">Salvar Alterações</button>
             </form>
