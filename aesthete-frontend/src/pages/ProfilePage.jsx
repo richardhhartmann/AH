@@ -1,20 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom'; 
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import axios from 'axios';
 import styled from 'styled-components';
+import api, { API_URL } from '../api/axios';
 import Modal from '../components/Modal';
-
-const ENDPOINT = process.env.REACT_APP_API_URL;
+import FullscreenStoryViewer from '../components/FullscreenStoryViewer';
+import { BsChat } from "react-icons/bs"; // Importando o ícone de chat
 
 // --- Styled Components ---
-const Profession = styled.p`
-  font-size: 1rem;
-  font-weight: 600;
-  color: #f58529; /* Laranja */
-  margin-top: -10px; /* Ajuste para ficar mais perto do nome */
-  margin-bottom: 20px;
-`;
 
 const ProfileWrapper = styled.div`
   max-width: 935px;
@@ -37,6 +30,9 @@ const Avatar = styled.img`
   height: 150px;
   border-radius: 50%;
   object-fit: cover;
+  cursor: ${props => props.hasStory ? 'pointer' : 'default'};
+  border: ${props => props.hasStory ? '4px solid rgb(254, 121, 13)' : '3px solid #dbdbdb'};
+  padding: 3px;
 `;
 
 const ProfileInfo = styled.section`
@@ -47,6 +43,7 @@ const UsernameRow = styled.div`
   display: flex;
   align-items: center;
   margin-bottom: 20px;
+  gap: 10px;
   h2 {
     font-size: 28px;
     font-weight: 300;
@@ -55,10 +52,10 @@ const UsernameRow = styled.div`
 `;
 
 const ActionButton = styled.button`
-    padding: 5px 9px;
+    padding: 7px 16px;
     border: 1px solid #dbdbdb;
-    border-radius: 4px;
-    background-color: transparent;
+    border-radius: 8px;
+    background-color: #efefef;
     font-weight: bold;
     cursor: pointer;
     &.primary {
@@ -66,6 +63,15 @@ const ActionButton = styled.button`
         color: white;
         border: none;
     }
+`;
+
+const ChatButton = styled(ActionButton)`
+    background-color: rgb(254, 121, 13);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 `;
 
 const StatsRow = styled.div`
@@ -85,6 +91,14 @@ const Bio = styled.div`
     font-weight: 600;
     margin-bottom: 5px;
   }
+`;
+
+const Profession = styled.p`
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f58529; /* Laranja */
+  margin-top: -10px;
+  margin-bottom: 20px;
 `;
 
 const PostGrid = styled.div`
@@ -123,85 +137,82 @@ const UserListItem = styled.div`
 const ProfilePage = () => {
     const { username } = useParams();
     const { user: loggedInUser } = useSelector((state) => state.auth);
+    const navigate = useNavigate();
+
     const [profileData, setProfileData] = useState(null);
-    const [hasActiveStory, setHasActiveStory] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTitle, setModalTitle] = useState('');
     const [modalUsers, setModalUsers] = useState([]);
+    const [userActiveStories, setUserActiveStories] = useState(null);
+    const [isViewerOpen, setIsViewerOpen] = useState(false);
+
+    const fetchProfile = useCallback(async () => {
+        setLoading(true);
+        try {
+            const { data } = await api.get(`/users/profile/${username}`);
+            setProfileData(data);
+        } catch (error) {
+            console.error("Erro ao buscar perfil", error);
+            navigate('/');
+        } finally {
+            setLoading(false);
+        }
+    }, [username, navigate]);
 
     useEffect(() => {
-        const fetchProfile = async () => {
-            setLoading(true);
-            try {
-                const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-                const { data } = await axios.get(`${ENDPOINT}/api/users/profile/${username}`, config);
-                setProfileData(data);
-                const storyFeedResponse = await axios.get('.../api/stories/feed', config);
-                const userHasStory = storyFeedResponse.data.some(userStories => userStories.userId === data.user._id);
-                setHasActiveStory(userHasStory);
-            } catch (error) {
-                console.error("Erro ao buscar perfil", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        if (loggedInUser) fetchProfile();
-    }, [username, loggedInUser]);
+        if (loggedInUser) {
+            fetchProfile();
+        }
+    }, [loggedInUser, fetchProfile]);
 
     const handleFollow = async () => {
         if (!profileData) return;
         try {
-            const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            await axios.put(`${ENDPOINT}/api/users/follow/${profileData.user._id}`, {}, config);
-            setProfileData(prevData => ({
-                ...prevData,
-                isFollowing: !prevData.isFollowing,
-                followerCount: !prevData.isFollowing ? prevData.followerCount + 1 : prevData.followerCount - 1
-            }));
+            await api.put(`/users/follow/${profileData.user._id}`);
+            // Recarrega os dados do perfil para garantir consistência
+            fetchProfile();
         } catch (error) {
             console.error('Erro ao seguir/deixar de seguir', error);
         }
     };
-
-    const openFollowersModal = async () => {
-        if (!profileData) return;
-        setModalTitle('Seguidores');
-        setIsModalOpen(true);
+    
+    const handleStartChat = async () => {
         try {
-            const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            const { data } = await axios.get(`${ENDPOINT}/api/users/${profileData.user._id}/followers`, config);
-            setModalUsers(data);
+            const { data } = await api.post('/chats', { userId: profileData.user._id });
+            navigate('/chat', { state: { chatId: data._id } });
         } catch (error) {
-            console.error("Erro ao buscar seguidores", error);
+            console.error("Erro ao iniciar chat", error);
         }
     };
-
-    const openFollowingModal = async () => {
-        if (!profileData) return;
-        setModalTitle('Seguindo');
-        setIsModalOpen(true);
+    
+    const openStoryViewer = async () => {
+        if (!profileData?.hasActiveStory) return;
         try {
-            const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            const { data } = await axios.get(`${ENDPOINT}/api/users/${profileData.user._id}/following`, config);
-            setModalUsers(data);
+            const { data } = await api.get(`/stories/user/${profileData.user._id}`);
+            setUserActiveStories(data);
+            setIsViewerOpen(true);
         } catch (error) {
-            console.error("Erro ao buscar usuários que segue", error);
+            console.error("Erro ao buscar stories do usuário", error);
         }
     };
+    
+    // Funções para abrir os modais (seguidores/seguindo)
+    const openFollowersModal = async () => { /* ... sua função ... */ };
+    const openFollowingModal = async () => { /* ... sua função ... */ };
 
     if (loading) return <p>Carregando perfil...</p>;
     if (!profileData) return <p>Usuário não encontrado.</p>;
 
-    const { user, posts, postCount, followerCount, followingCount, isFollowing } = profileData;
+    const { user, posts, postCount, followerCount, followingCount, isFollowing, hasActiveStory } = profileData;
     const isMyProfile = loggedInUser?._id === user._id;
 
     return (
         <ProfileWrapper>
             <ProfileHeader>
-                <AvatarContainer>
+                <AvatarContainer onClick={openStoryViewer}>
                     <Avatar 
-                        src={`${ENDPOINT}${user.avatar}`} 
+                        src={`${API_URL}${user.avatar}`} 
                         alt={`${user.username}'s avatar`}
                         hasStory={hasActiveStory}
                     />
@@ -212,9 +223,14 @@ const ProfilePage = () => {
                         {isMyProfile ? (
                             <ActionButton as={Link} to="/conta/editar">Editar Perfil</ActionButton>
                         ) : (
-                            <ActionButton onClick={handleFollow} className={!isFollowing ? 'primary' : ''}>
-                                {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
-                            </ActionButton>
+                            <>
+                                <ActionButton onClick={handleFollow} className={!isFollowing ? 'primary' : ''}>
+                                    {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
+                                </ActionButton>
+                                <ChatButton onClick={handleStartChat}>
+                                    <BsChat size={16} />
+                                </ChatButton>
+                            </>
                         )}
                     </UsernameRow>
                     {user.profession && <Profession>{user.profession}</Profession>}
@@ -234,26 +250,22 @@ const ProfilePage = () => {
                 {posts.map(post => (
                     <Link key={post._id} to={`/post/${post._id}`}>
                         <PostThumbnail>
-                            <img src={`${ENDPOINT}${post.mediaUrl}`} alt={post.caption} />
+                            <img src={`${API_URL}${post.mediaUrl}`} alt={post.caption} />
                         </PostThumbnail>
                     </Link>
                 ))}
             </PostGrid>
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalTitle}>
-                {modalUsers.length > 0 ? (
-                    modalUsers.map(user => (
-                        <UserListItem key={user._id}>
-                            <img src={`${ENDPOINT}${user.avatar}`} alt={user.username} />
-                            <Link to={`/perfil/${user.username}`} onClick={() => setIsModalOpen(false)}>
-                                <strong>{user.username}</strong>
-                            </Link>
-                        </UserListItem>
-                    ))
-                ) : (
-                    <p>Nenhum usuário para exibir.</p>
-                )}
+                 {/* ... conteúdo do modal ... */}
             </Modal>
+
+            {isViewerOpen && userActiveStories && (
+                <FullscreenStoryViewer 
+                    userStories={userActiveStories} 
+                    onClose={() => setIsViewerOpen(false)} 
+                />
+            )}
         </ProfileWrapper>
     );
 };

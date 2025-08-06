@@ -1,5 +1,7 @@
 const Story = require('../models/Story');
 const User = require('../models/User');
+const fs = require('fs');
+const path = require('path');
 
 // @desc    Criar um novo story
 // @route   POST /api/stories
@@ -63,5 +65,67 @@ exports.getStoryFeed = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erro ao buscar stories.' });
+    }
+};
+
+// @desc    Buscar stories de um usuário específico
+// @route   GET /api/stories/user/:userId
+exports.getStoriesByUserId = async (req, res) => {
+    try {
+        const stories = await Story.find({
+            user: req.params.userId,
+            expiresAt: { $gt: new Date() }
+        }).populate('user', 'username avatar');
+
+        if (!stories || stories.length === 0) {
+            return res.status(404).json({ message: 'Nenhum story ativo encontrado para este usuário.' });
+        }
+        
+        // Formata os dados da mesma forma que o feed de stories
+        const user = stories[0].user;
+        const formattedData = {
+            userId: user._id,
+            username: user.username,
+            avatar: user.avatar,
+            stories: stories.map(s => ({ _id: s._id, mediaUrl: s.mediaUrl }))
+        };
+
+        res.json(formattedData);
+    } catch (error) {
+        res.status(500).json({ message: 'Erro no servidor' });
+    }
+};
+
+exports.deleteStory = async (req, res) => {
+    try {
+        const story = await Story.findById(req.params.id);
+        if (!story) {
+            return res.status(404).json({ message: 'Story não encontrado' });
+        }
+        if (story.user.toString() !== req.user.id) {
+            return res.status(401).json({ message: 'Não autorizado' });
+        }
+        const mediaPath = path.join(__dirname, '..', '..', story.mediaUrl);
+        if (fs.existsSync(mediaPath)) {
+            fs.unlinkSync(mediaPath);
+        }
+        await story.deleteOne();
+        res.json({ message: 'Story removido com sucesso' });
+    } catch (error) {
+        console.error("ERRO AO DELETAR STORY:", error);
+        res.status(500).json({ message: 'Erro no servidor' });
+    }
+};
+// @desc    Buscar um único story pelo ID
+// @route   GET /api/stories/:id
+exports.getStoryById = async (req, res) => {
+    try {
+        const story = await Story.findById(req.params.id).populate('user', 'username avatar');
+        if (!story) {
+            return res.status(404).json({ message: 'Story não encontrado' });
+        }
+        res.json(story);
+    } catch (error) {
+        res.status(500).json({ message: 'Erro no servidor' });
     }
 };

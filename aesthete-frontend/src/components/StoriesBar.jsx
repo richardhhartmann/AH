@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import styled from 'styled-components';
-
-const ENDPOINT = process.env.REACT_APP_API_URL;
+import api, { API_URL } from '../api/axios';
+import FullscreenStoryViewer from './FullscreenStoryViewer';
 
 const StoriesContainer = styled.div`
   display: flex;
@@ -20,11 +19,12 @@ const StoriesContainer = styled.div`
 const StoryCircle = styled.div`
   cursor: pointer;
   text-align: center;
+  flex-shrink: 0;
   img {
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    border: 3px solid #c72d8f; /* Borda colorida */
+    border: 3px solid ${props => props.allViewed ? '#dbdbdb' : 'rgb(254, 121, 13)'};
     padding: 2px;
   }
   p {
@@ -33,16 +33,19 @@ const StoryCircle = styled.div`
   }
 `;
 
-const StoriesBar = ({ onStoryClick }) => {
+const StoriesBar = () => {
     const { user: loggedInUser } = useSelector((state) => state.auth);
     const [storyFeed, setStoryFeed] = useState([]);
+    const [viewedStories, setViewedStories] = useState(
+        JSON.parse(localStorage.getItem('viewedStories')) || []
+    );
+    const [selectedUserStories, setSelectedUserStories] = useState(null);
 
     useEffect(() => {
         const fetchStories = async () => {
             if (!loggedInUser) return;
             try {
-                const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-                const { data } = await axios.get(`${ENDPOINT}/api/stories/feed`, config);
+                const { data } = await api.get('/stories/feed');
                 setStoryFeed(data);
             } catch (error) {
                 console.error("Erro ao buscar stories", error);
@@ -51,38 +54,54 @@ const StoriesBar = ({ onStoryClick }) => {
         fetchStories();
     }, [loggedInUser]);
 
-    // Separa o seu story dos outros
+    const handleStoryClick = (userStories) => {
+        setSelectedUserStories(userStories);
+    };
+
+    const handleCloseViewer = () => {
+        // Atualiza o estado de 'visto' na barra ao fechar o visualizador
+        setViewedStories(JSON.parse(localStorage.getItem('viewedStories')) || []);
+        setSelectedUserStories(null);
+    };
+
     const myStories = storyFeed.find(userStories => userStories.userId === loggedInUser._id);
     const otherStories = storyFeed.filter(userStories => userStories.userId !== loggedInUser._id);
 
-    // Não renderiza a barra se não houver stories de ninguém
-    if (storyFeed.length === 0) return null;
-
     return (
-        <StoriesContainer>
-            {/* Renderiza seu story primeiro, com um link para criar um novo */}
-            {myStories ? (
-                <StoryCircle onClick={() => onStoryClick(myStories)}>
-                    <img src={`${ENDPOINT}${myStories.avatar}`} alt={myStories.username} />
-                    <p>Seu story</p>
-                </StoryCircle>
-            ) : (
-                <Link to="/stories/novo" style={{textDecoration: 'none'}}>
-                    <StoryCircle>
-                        <img src={`${ENDPOINT}${loggedInUser.avatar}`} alt="Adicionar story" style={{ border: '2px dashed #dbdbdb' }} />
-                        <p>Adicionar</p>
+        <>
+            <StoriesContainer>
+                {myStories && (
+                    <StoryCircle 
+                        onClick={() => handleStoryClick(myStories)}
+                        allViewed={myStories.stories.every(story => viewedStories.includes(story._id))}
+                    >
+                        <img src={`${API_URL}${myStories.avatar}`} alt="Seu story" />
+                        <p>Seu story</p>
                     </StoryCircle>
-                </Link>
-            )}
+                )}
 
-            {/* Renderiza os stories dos outros */}
-            {otherStories.map(userStories => (
-                <StoryCircle key={userStories.userId} onClick={() => onStoryClick(userStories)}>
-                    <img src={`${ENDPOINT}${userStories.avatar}`} alt={userStories.username} />
-                    <p>{userStories.username}</p>
-                </StoryCircle>
-            ))}
-        </StoriesContainer>
+                {otherStories.map(userStories => {
+                    const allStoriesViewed = userStories.stories.every(story => viewedStories.includes(story._id));
+                    return (
+                        <StoryCircle 
+                            key={userStories.userId} 
+                            onClick={() => handleStoryClick(userStories)}
+                            allViewed={allStoriesViewed}
+                        >
+                            <img src={`${API_URL}${userStories.avatar}`} alt={userStories.username} />
+                            <p>{userStories.username}</p>
+                        </StoryCircle>
+                    );
+                })}
+            </StoriesContainer>
+
+            {selectedUserStories && (
+                <FullscreenStoryViewer 
+                    userStories={selectedUserStories} 
+                    onClose={handleCloseViewer} 
+                />
+            )}
+        </>
     );
 };
 

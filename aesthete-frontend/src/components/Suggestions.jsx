@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import api, { API_URL } from '../api/axios'; // Usando nossa instância central do axios
+import { IoChatbubbles } from "react-icons/io5";
 
 // --- Styled Components ---
 
@@ -35,6 +36,17 @@ const UserInfo = styled.div`
   }
 `;
 
+const UsernameLink = styled(Link)`
+  text-decoration: none;
+  color: inherit;
+  font-weight: bold;
+`;
+
+const SuggestionBio = styled.p`
+  color: #8e8e8e;
+  font-size: 0.8rem;
+`;
+
 const Avatar = styled.img`
   width: 44px;
   height: 44px;
@@ -49,6 +61,23 @@ const FollowButton = styled.button`
   font-weight: bold;
   cursor: pointer;
 `;
+
+// --- Novo estilo para o botão de chat ---
+const ChatButton = styled.button`
+  background-color: rgb(254, 121, 13);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-left: 8px;
+`;
+
 
 // --- Componente ---
 const Suggestions = () => {
@@ -77,6 +106,11 @@ const Suggestions = () => {
         }
     };
 
+    const handleStartChat = (userId) => {
+        console.log(`Iniciar chat com o usuário ID: ${userId}`);
+        // ### AQUI VOCÊ IMPLEMENTARÁ A LÓGICA PARA CRIAR/ABRIR O CHAT
+    };
+
     if (suggestions.length === 0) {
         return null; // Não mostra nada se não houver sugestões
     }
@@ -86,19 +120,23 @@ const Suggestions = () => {
             <Header>Sugestões para você</Header>
             {suggestions.map(user => (
                 <UserItem key={user._id}>
-                    {/* Lógica para visualizar stories pode ser adicionada aqui no futuro */}
                     <Link to={`/perfil/${user.username}`}>
                         <Avatar src={`${API_URL}${user.avatar}`} alt={user.username} />
                     </Link>
                     <UserInfo>
-                        <Link to={`/perfil/${user.username}`}>
-                            <strong>{user.username}</strong>
-                        </Link>
-                        <p>{user.bio}</p>
+                        <div>
+                            <UsernameLink to={`/perfil/${user.username}`}>
+                                {user.username}
+                            </UsernameLink>
+                            {user.bio && <SuggestionBio>{user.bio}</SuggestionBio>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <FollowButton onClick={() => handleFollow(user._id)}>
+                                Seguir
+                            </FollowButton>
+                            <ChatButton onClick={() => handleStartChat(user._id)}><IoChatbubbles size = {18}/></ChatButton>
+                        </div>
                     </UserInfo>
-                    <FollowButton onClick={() => handleFollow(user._id)}>
-                        Seguir
-                    </FollowButton>
                 </UserItem>
             ))}
         </SuggestionsContainer>

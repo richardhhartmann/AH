@@ -12,18 +12,29 @@ const ENDPOINT = process.env.REACT_APP_API_URL;
 const StoryViewer = ({ userStories, onClose }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    // Efeito para transição automática
+    // Efeito para transição automática E para marcar como visto
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (currentIndex < userStories.stories.length - 1) {
-                setCurrentIndex(currentIndex + 1);
-            } else {
-                onClose(); // Fecha quando chega no último
+        // --- LÓGICA NOVA: Marcar o story atual como visto ---
+        const markAsViewed = () => {
+            const currentStoryId = userStories.stories[currentIndex]._id;
+            // Pega a lista de stories já vistos do localStorage
+            const viewedStories = JSON.parse(localStorage.getItem('viewedStories')) || [];
+            // Adiciona o ID do story atual à lista, se ainda não estiver lá
+            if (!viewedStories.includes(currentStoryId)) {
+                viewedStories.push(currentStoryId);
+                localStorage.setItem('viewedStories', JSON.stringify(viewedStories));
             }
-        }, 5000); // Muda de story a cada 5 segundos
+        };
+        
+        // Chamamos a função para garantir que o story seja marcado assim que exibido
+        markAsViewed();
+
+        const timer = setTimeout(() => {
+            handleNext();
+        }, 5000);
 
         return () => clearTimeout(timer);
-    }, [currentIndex, userStories.stories.length, onClose]);
+    }, [currentIndex, userStories]); // Adicionamos userStories à dependência
 
     const handlePrev = () => {
         if (currentIndex > 0) {

@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Post = require('../models/Post');
+const Story = require('../models/Story');
 const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
@@ -8,18 +9,13 @@ const jwt = require('jsonwebtoken');
 // @route   GET /api/users/profile/:username
 exports.getUserProfile = async (req, res) => {
     try {
-        // --- LINHA MODIFICADA ---
-        // Em vez de buscar pelo nome exato, usamos uma expressão regular
-        // que busca pelo username ignorando o case (maiúsculas/minúsculas).
-        const user = await User.findOne({ 
-            username: { $regex: `^${req.params.username}$`, $options: 'i' } 
-        }).select('-password');
-
+        const user = await User.findOne({ username: { $regex: `^${req.params.username}$`, $options: 'i' } }).select('-password');
         if (!user) {
             return res.status(404).json({ message: 'Usuário não encontrado' });
         }
 
         const posts = await Post.find({ user: user._id }).sort({ createdAt: -1 });
+        const activeStory = await Story.findOne({ user: user._id, expiresAt: { $gt: new Date() } });
 
         const isFollowing = req.user ? user.followers.includes(req.user.id) : false;
 
@@ -29,7 +25,8 @@ exports.getUserProfile = async (req, res) => {
             postCount: posts.length,
             followerCount: user.followers.length,
             followingCount: user.following.length,
-            isFollowing
+            isFollowing,
+            hasActiveStory: !!activeStory
         });
     } catch (error) {
         console.error(error);
@@ -179,13 +176,24 @@ exports.getFollowing = async (req, res) => {
 exports.getUserSuggestions = async (req, res) => {
     try {
         const currentUser = await User.findById(req.user.id);
+
+        // --- ADIÇÃO DE SEGURANÇA ---
+        // Se, por algum motivo, o usuário do token não for encontrado no DB,
+        // retornamos um erro claro em vez de deixar o servidor quebrar.
+        if (!currentUser) {
+            return res.status(404).json({ message: 'Usuário logado não encontrado.' });
+        }
+
         const usersToExclude = [...currentUser.following, req.user.id];
+
         const users = await User.find({ _id: { $nin: usersToExclude } })
             .select('username avatar bio')
             .limit(10);
+
         res.json(users);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Erro no servidor' });
+        // Adicionamos um log mais específico para futuras depurações
+        console.error("ERRO EM getUserSuggestions:", error); 
+        res.status(500).json({ message: 'Erro no servidor ao buscar sugestões.' });
     }
 };
