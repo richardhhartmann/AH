@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import axios from 'axios';
+import api from '../api/axios';
 import styled from 'styled-components';
 import Post from '../components/Post';
 import StoriesBar from '../components/StoriesBar'; 
@@ -43,10 +43,10 @@ const HomePage = () => {
 
       setLoading(true);
       try {
-        const config = {
-          headers: { Authorization: `Bearer ${loggedInUser.token}` },
-        };
-        const { data } = await axios.get(`${ENDPOINT}/api/posts/feed`, config);
+        // CORREÇÃO:
+        // Agora usamos a instância 'api', que já injeta o token.
+        // Não precisamos mais do 'config' e nem da URL completa.
+        const { data } = await api.get('/posts/feed');
         setPosts(data);
       } catch (error) {
         console.error('Falha ao buscar o feed', error);
@@ -56,12 +56,12 @@ const HomePage = () => {
     };
 
     fetchFeed();
-  }, [loggedInUser]); // Roda o efeito sempre que o usuário logado mudar
+  }, [loggedInUser]);
 
   if (!loggedInUser) {
     return (
         <WelcomeMessage>
-            <h2>Bem-vindo à Aesthete!</h2>
+            <h2>Bem-vindo à AceleraHOF!</h2>
             <p>Faça login para ver o feed ou cadastre-se para começar.</p>
         </WelcomeMessage>
     );

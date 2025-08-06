@@ -11,7 +11,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'aesthete', // Nome da pasta no Cloudinary
+        folder: 'aesthete',
         allowed_formats: ['jpeg', 'png', 'jpg']
     }
 });

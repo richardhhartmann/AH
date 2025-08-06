@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import axios from 'axios';
+import api from '../api/axios'; // Mude a importação
 import Post from '../components/Post'; // Reutilizamos o componente Post
 import styled from 'styled-components';
 
@@ -73,7 +73,7 @@ const SinglePostPage = () => {
         const fetchPostAndComments = async () => {
             try {
                 // Buscamos o post e populamos os usuários dos comentários já existentes
-                const { data } = await axios.get(`${ENDPOINT}/api/posts/${postId}?populate=comments.user`);
+                const { data } = await api.get(`/posts/${postId}?populate=comments.user`);
                 setPost(data);
                 setComments(data.comments);
             } catch (error) {
@@ -92,10 +92,9 @@ const SinglePostPage = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            const { data: addedComment } = await axios.post(
-                `${ENDPOINT}/api/posts/${postId}/comment`,
-                { text: newComment },
-                config
+            const { data: addedComment } = await api.post(
+                `/posts/${postId}/comment`,
+                { text: newComment }
             );
             
             // Adiciona o novo comentário à lista (UI otimista)

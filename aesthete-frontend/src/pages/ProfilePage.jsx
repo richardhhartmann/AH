@@ -216,7 +216,11 @@ const ProfilePage = () => {
             <ProfileHeader>
                 <AvatarContainer onClick={openStoryViewer}>
                     <Avatar 
-                        src={user.avatar}
+                        src={
+                            (user.avatar && user.avatar !== 'default_avatar_url') 
+                            ? (user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`)
+                            : `${API_URL}/uploads/avatars/default.jpg`
+                        }
                         alt={`${user.username}'s avatar`}
                         hasStory={hasActiveStory}
                     />

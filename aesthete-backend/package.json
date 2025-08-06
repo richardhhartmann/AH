@@ -5,7 +5,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "data:import": "node seeder.js",
+    "data:destroy": "node seeder.js -d"
   },
   "author": "Richard",
   "license": "ISC",

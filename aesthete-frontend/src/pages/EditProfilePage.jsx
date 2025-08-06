@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios'; // Mude a importação
+
 import styled from 'styled-components';
 // Importaremos uma nova ação do Redux que vamos criar
 // import { updateUserProfile } from '../features/auth/authSlice';
@@ -72,7 +73,11 @@ const EditProfilePage = () => {
                 }
             };
             // Lógica para chamar a API e atualizar o estado do Redux viria aqui
-            const { data } = await axios.put(`${ENDPOINT}/api/users/profile`, formData, config);
+            const { data } = await api.put('/users/profile', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                }
+            });
             
             // Atualizar o localStorage e o estado do Redux (IMPORTANTE!)
             localStorage.setItem('user', JSON.stringify(data));

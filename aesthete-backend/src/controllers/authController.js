@@ -35,8 +35,17 @@ exports.registerUser = async (req, res) => {
 // @desc    Autenticar usuário e obter token
 // @route   POST /api/auth/login
 exports.loginUser = async (req, res) => {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const { identifier, password } = req.body;
+
+    if (!identifier || !password) {
+        return res.status(400).json({ message: 'Por favor, forneça um identificador e senha.' });
+    }
+
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+
+    const user = await User.findOne(
+        isEmail ? { email: identifier } : { username: identifier }
+    );
 
     if (user && (await user.matchPassword(password))) {
         res.json({
@@ -46,7 +55,7 @@ exports.loginUser = async (req, res) => {
             token: generateToken(user._id),
         });
     } else {
-        res.status(401).json({ message: 'E-mail ou senha inválidos' });
+        res.status(401).json({ message: 'Credenciais inválidas' });
     }
 };
 

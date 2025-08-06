@@ -15,14 +15,14 @@ const ChoiceButton = styled(Link)`
     margin: 20px 0;
     font-size: 1.2rem;
     font-weight: bold;
-    color: #0095f6;
-    border: 2px solid #0095f6;
+    color: rgb(254, 121, 13);
+    border: 2px solid rgb(254, 121, 13);
     border-radius: 8px;
     text-decoration: none;
     transition: all 0.2s ease-in-out;
 
     &:hover {
-        background-color: #0095f6;
+        background-color: rgb(254, 121, 13);
         color: white;
     }
 `;

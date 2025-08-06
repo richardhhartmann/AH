@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import api, { API_URL } from '../api/axios';
+import api, { API_URL } from '../api/axios'; // Mantenha a importação da API_URL
 import FullscreenStoryViewer from './FullscreenStoryViewer';
 
+// --- Styled Components (sem alterações) ---
 const StoriesContainer = styled.div`
   display: flex;
   gap: 15px;
@@ -20,24 +20,36 @@ const StoryCircle = styled.div`
   cursor: pointer;
   text-align: center;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 70px;
+
   img {
     width: 60px;
     height: 60px;
     border-radius: 50%;
+    /* A borda agora é controlada pela prop 'allViewed' */
     border: 3px solid ${props => props.allViewed ? '#dbdbdb' : 'rgb(254, 121, 13)'};
     padding: 2px;
+    object-fit: cover;
   }
   p {
     font-size: 0.8rem;
     margin-top: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
   }
 `;
 
+// --- Componente ---
 const StoriesBar = () => {
     const { user: loggedInUser } = useSelector((state) => state.auth);
     const [storyFeed, setStoryFeed] = useState([]);
     const [viewedStories, setViewedStories] = useState(
-        JSON.parse(localStorage.getItem('viewedStories')) || []
+        () => JSON.parse(localStorage.getItem('viewedStories')) || []
     );
     const [selectedUserStories, setSelectedUserStories] = useState(null);
 
@@ -59,27 +71,25 @@ const StoriesBar = () => {
     };
 
     const handleCloseViewer = () => {
-        // Atualiza o estado de 'visto' na barra ao fechar o visualizador
         setViewedStories(JSON.parse(localStorage.getItem('viewedStories')) || []);
         setSelectedUserStories(null);
     };
+    
+    // Função para construir a URL completa da imagem
+    const getImageUrl = (url) => {
+        if (!url) return '';
+        return url.startsWith('http') ? url : `${API_URL}${url}`;
+    };
 
-    const myStories = storyFeed.find(userStories => userStories.userId === loggedInUser._id);
-    const otherStories = storyFeed.filter(userStories => userStories.userId !== loggedInUser._id);
+    if (!storyFeed.length) {
+        return null;
+    }
 
     return (
         <>
             <StoriesContainer>
-                {myStories && (
-                    <StoryCircle 
-                        onClick={() => handleStoryClick(myStories)}
-                        allViewed={myStories.stories.every(story => viewedStories.includes(story._id))}
-                    >
-                        <p>Seu story</p>
-                    </StoryCircle>
-                )}
-
-                {otherStories.map(userStories => {
+                {/* Mapeia TODOS os stories, incluindo os do usuário logado */}
+                {storyFeed.map(userStories => {
                     const allStoriesViewed = userStories.stories.every(story => viewedStories.includes(story._id));
                     return (
                         <StoryCircle 
@@ -87,7 +97,9 @@ const StoriesBar = () => {
                             onClick={() => handleStoryClick(userStories)}
                             allViewed={allStoriesViewed}
                         >
-                            <p>{userStories.username}</p>
+                            {/* CORREÇÃO AQUI: Usando a função getImageUrl para o avatar */}
+                            <img src={getImageUrl(userStories.avatar)} alt={userStories.username} />
+                            <p>{userStories.userId === loggedInUser._id ? 'Seu story' : userStories.username}</p>
                         </StoryCircle>
                     );
                 })}

@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout, reset } from '../features/auth/authSlice';
+import { fetchChats, updateChatStateFromSocket } from '../features/chat/chatSlice';
 import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import io from 'socket.io-client';
 
 // Ícones
-import logoImage from '../assets/images/logo.jpg'; // Verifique se o nome do seu logo é 'logo.png' ou '.jpg'
-import { IoAddCircleOutline } from "react-icons/io5";
+import logoImage from '../assets/images/logo.jpg';
+import { IoAddCircleOutline, IoAddCircle } from "react-icons/io5";
 import { CgProfile } from "react-icons/cg";
 import { FiLogOut } from "react-icons/fi";
-import { GoHome } from "react-icons/go";
+import { BiWorld } from "react-icons/bi";
+import { PiChats } from "react-icons/pi";
 import { FaRegBell } from "react-icons/fa";
 
 // --- Styled Components ---
@@ -119,9 +121,25 @@ const RecentSearchHeader = styled.div`
   }
 `;
 
-const NavIconWrapper = styled.div`
+const NavIconWrapper = styled.span`
   position: relative;
-  cursor: pointer;
+  background-color: ${({ isSelected, disableEffect }) =>
+    disableEffect ? 'transparent' :
+    isSelected ? 'rgb(254, 121, 13)' : 'rgb(255, 240, 233)'};
+  border-radius: 50%;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease, color 0.3s ease;
+
+  svg {
+    color: ${({ isSelected, disableEffect }) =>
+      disableEffect ? 'black' :
+      isSelected ? 'white' : 'black'};
+    transition: color 0.3s ease;
+    font-size: 24px;
+  }
 `;
 
 const NotificationBadge = styled.span`
@@ -136,47 +154,109 @@ const NotificationBadge = styled.span`
   border: 1px solid rgb(255, 240, 233);
 `;
 
+const UnreadCountBadge = styled(NotificationBadge)`
+  background-color: rgb(254, 121, 13);
+`;
+
+const NotificationsDropdown = styled.div`
+  position: absolute;
+  top: 150%;
+  right: 0;
+  width: 380px;
+  background-color: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 20;
+  max-height: 400px;
+  overflow-y: auto;
+`;
+
+const NotificationItem = styled(Link)`
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  text-decoration: none;
+  color: #262626;
+  
+  &:hover {
+    background-color: #fafafa;
+  }
+
+  img {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    margin-right: 12px;
+  }
+`;
+
+// --- Hook customizado ---
+const useOnClickOutside = (ref, handler) => {
+  useEffect(() => {
+    const listener = (event) => {
+      if (!ref.current || ref.current.contains(event.target)) return;
+      handler(event);
+    };
+    document.addEventListener('mousedown', listener);
+    document.addEventListener('touchstart', listener);
+    return () => {
+      document.removeEventListener('mousedown', listener);
+      document.removeEventListener('touchstart', listener);
+    };
+  }, [ref, handler]);
+};
+
 // --- Componente Principal ---
 const Navbar = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
+    const location = useLocation();
+    
     const { user: loggedInUser } = useSelector((state) => state.auth);
+    const { totalUnreadCount } = useSelector((state) => state.chat);
 
-    // Estados da Busca
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [isFocused, setIsFocused] = useState(false);
     const [recentSearches, setRecentSearches] = useState(() => JSON.parse(localStorage.getItem('recentSearches')) || []);
-    
-    // Estados das Notificações
     const [notifications, setNotifications] = useState([]);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef();
+    
+    useOnClickOutside(dropdownRef, () => setIsDropdownOpen(false));
 
-    // Efeito para buscar e escutar notificações
     useEffect(() => {
         if (!loggedInUser) return;
 
-        const socket = io(process.env.REACT_APP_API_URL);
-
+        dispatch(fetchChats());
+        
         const fetchNotifications = async () => {
             try {
                 const { data } = await api.get('/notifications');
                 setNotifications(data);
-                setUnreadCount(data.filter(n => !n.read).length);
+                setUnreadNotificationCount(data.filter(n => !n.read).length);
             } catch (error) { console.error("Erro ao buscar notificações", error); }
         };
         fetchNotifications();
         
+        const socket = io(process.env.REACT_APP_API_URL);
         socket.emit('setup', loggedInUser);
+        
         socket.on('newNotification', (newNotification) => {
             setNotifications(prev => [newNotification, ...prev]);
-            setUnreadCount(prev => prev + 1);
+            setUnreadNotificationCount(prev => prev + 1);
+        });
+
+        socket.on('messageReceived', (newMessage) => {
+            dispatch(updateChatStateFromSocket({ ...newMessage, meta: { arg: { userId: loggedInUser._id } } }));
         });
 
         return () => { socket.disconnect(); };
-    }, [loggedInUser]);
+    }, [loggedInUser, dispatch]);
 
-    // Efeito para a busca com debounce
     useEffect(() => {
         if (!query.trim() || query.trim().length < 2) {
           setResults([]);
@@ -190,7 +270,7 @@ const Navbar = () => {
         }, 300);
     
         return () => clearTimeout(delayDebounceFn);
-    }, [query]);
+    }, [query, loggedInUser?.token]);
 
     const handleLogout = () => {
         dispatch(logout());
@@ -215,6 +295,45 @@ const Navbar = () => {
         setResults([]);
         setIsFocused(false);
         navigate(`/perfil/${user.username}`);
+    };
+
+    const handleBellClick = async () => {
+        setIsDropdownOpen(prev => !prev);
+        if (!isDropdownOpen && unreadNotificationCount > 0) {
+            try {
+                await api.put('/notifications/read');
+                setUnreadNotificationCount(0);
+            } catch (error) {
+                console.error("Erro ao marcar notificações como lidas", error);
+            }
+        }
+    };
+    
+    const getNotificationLink = (notification) => {
+        if (!notification) return '/';
+        switch(notification.type) {
+            case 'like':
+            case 'comment':
+                return `/post/${notification.post?._id}`;
+            case 'follow':
+                return `/perfil/${notification.sender.username}`;
+            default:
+                return '/';
+        }
+    };
+
+    const getNotificationText = (notification) => {
+        if (!notification) return '';
+        switch(notification.type) {
+            case 'like':
+                return 'curtiu sua publicação.';
+            case 'comment':
+                return 'comentou na sua publicação.';
+            case 'follow':
+                return 'começou a seguir você.';
+            default:
+                return '';
+        }
     };
 
     return (
@@ -263,15 +382,66 @@ const Navbar = () => {
                 <NavLinks>
                     {loggedInUser ? (
                         <>
-                            <Link to="/" title="Feed"><GoHome /></Link>
-                            <Link to="/criar" title="Criar"><IoAddCircleOutline /></Link>
-                            <NavIconWrapper title="Notificações">
-                                <FaRegBell />
-                                {unreadCount > 0 && <NotificationBadge>{unreadCount}</NotificationBadge>}
-                                {/* O Dropdown de notificações seria renderizado aqui */}
-                            </NavIconWrapper>
-                            <Link to={`/perfil/${loggedInUser.username}`} title="Perfil"><CgProfile /></Link>
-                            <LogoutButton onClick={handleLogout} title="Sair"><FiLogOut /></LogoutButton>
+                            {/* Ícone de Feed */}
+                            <Link to="/" title="Feed">
+                                <NavIconWrapper isSelected={location.pathname === '/'}>
+                                    <BiWorld />
+                                </NavIconWrapper>
+                            </Link>
+
+                            {/* Ícone de Mensagens */}
+                            <Link to="/chat" title="Mensagens Diretas">
+                                <NavIconWrapper isSelected={location.pathname === '/chat'}>
+                                    <PiChats />
+                                    {totalUnreadCount > 0 && <UnreadCountBadge>{totalUnreadCount}</UnreadCountBadge>}
+                                </NavIconWrapper>
+                            </Link>
+                            
+                            {/* Ícone de Criar (ALTERADO) */}
+                            <Link to="/criar" title="Criar">
+                                <NavIconWrapper isSelected={location.pathname === '/criar' || location.pathname === '/novo-post' || location.pathname === '/stories/novo'}>
+                                    {location.pathname === '/criar' || location.pathname === '/novo-post' || location.pathname === '/stories/novo' ? <IoAddCircle /> : <IoAddCircleOutline />}
+                                </NavIconWrapper>
+                            </Link>
+
+                            {/* Ícone de Notificações (ALTERADO) */}
+                            <div title="Notificações" ref={dropdownRef} onClick={handleBellClick} style={{cursor: 'pointer'}}>
+                                <NavIconWrapper isSelected={false} disableEffect>
+                                  <FaRegBell />
+                                  {unreadNotificationCount > 0 && !isDropdownOpen && <NotificationBadge>{unreadNotificationCount}</NotificationBadge>}
+                                </NavIconWrapper>
+                                {isDropdownOpen && (
+                                    <NotificationsDropdown>
+                                        {notifications.length > 0 ? notifications.map(notif => (
+                                            <NotificationItem 
+                                                key={notif._id} 
+                                                to={getNotificationLink(notif)}
+                                                onClick={() => setIsDropdownOpen(false)}
+                                            >
+                                                <img src={notif.sender.avatar.startsWith('http') ? notif.sender.avatar : `${API_URL}${notif.sender.avatar}`} alt={notif.sender.username} />
+                                                <p>
+                                                    <strong>{notif.sender.username}</strong>
+                                                    {' '}{getNotificationText(notif)}
+                                                </p>
+                                            </NotificationItem>
+                                        )) : <p style={{padding: '16px', textAlign: 'center', color: '#8e8e8e'}}>Nenhuma notificação.</p>}
+                                    </NotificationsDropdown>
+                                )}
+                            </div>
+
+                            {/* Ícone de Perfil (ALTERADO) */}
+                            <Link to={`/perfil/${loggedInUser.username}`} title="Perfil">
+                                <NavIconWrapper isSelected={location.pathname === `/perfil/${loggedInUser.username}`}>
+                                    <CgProfile />
+                                </NavIconWrapper>
+                            </Link>
+
+                            {/* Ícone de Sair (ALTERADO) */}
+                            <LogoutButton onClick={handleLogout} title="Sair">
+                                <NavIconWrapper>
+                                    <FiLogOut />
+                                </NavIconWrapper>
+                            </LogoutButton>
                         </>
                     ) : (
                         <>

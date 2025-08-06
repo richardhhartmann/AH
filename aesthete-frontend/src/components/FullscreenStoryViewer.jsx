@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { useSelector } from 'react-redux'; // 1. Importe useSelector
-import api, { API_URL } from '../api/axios';
-import { FaTrash } from 'react-icons/fa'; // 2. Importe um ícone de lixeira
+import { useSelector } from 'react-redux';
+import api, { API_URL } from '../api/axios'; // Mantenha a importação da API_URL
+import { FaTrash } from 'react-icons/fa';
 
+// --- Styled Components (sem alterações) ---
 const FullscreenOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -19,9 +20,9 @@ const FullscreenOverlay = styled.div`
 
 const StoryContentWrapper = styled.div`
   position: relative;
-  max-width: 450px; /* Largura similar a um celular */
+  max-width: 450px;
   width: 100%;
-  aspect-ratio: 9 / 16; /* Proporção de story (vertical) */
+  aspect-ratio: 9 / 16;
   background-color: #111;
   border-radius: 8px;
   overflow: hidden;
@@ -76,7 +77,6 @@ const ProgressBar = styled.div`
   height: 100%;
   background-color: white;
   border-radius: 3px;
-  /* Animação com duração de 5 segundos */
   animation: ${progressBarAnimation} 5s linear forwards;
 `;
 
@@ -97,6 +97,7 @@ const DeleteButton = styled.button`
   }
 `;
 
+// --- Componente ---
 const FullscreenStoryViewer = ({ userStories, onClose }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const { user: loggedInUser } = useSelector((state) => state.auth);
@@ -105,18 +106,24 @@ const FullscreenStoryViewer = ({ userStories, onClose }) => {
         if (currentIndex < userStories.stories.length - 1) {
             setCurrentIndex(prev => prev + 1);
         } else {
-            onClose(); // Fecha quando chega no último story
+            onClose();
         }
     }, [currentIndex, userStories, onClose]);
 
-    const handlePrev = () => {
+    const handlePrev = (e) => {
+        e.stopPropagation();
         if (currentIndex > 0) {
             setCurrentIndex(prev => prev - 1);
         }
     };
+    
+    const handleNextClick = (e) => {
+        e.stopPropagation();
+        handleNext();
+    };
+
 
     useEffect(() => {
-        // Marca o story como visto assim que ele é exibido
         const currentStoryId = userStories.stories[currentIndex]._id;
         const viewedStories = JSON.parse(localStorage.getItem('viewedStories')) || [];
         if (!viewedStories.includes(currentStoryId)) {
@@ -124,20 +131,19 @@ const FullscreenStoryViewer = ({ userStories, onClose }) => {
             localStorage.setItem('viewedStories', JSON.stringify(viewedStories));
         }
 
-        // Timer para avançar automaticamente
         const timer = setTimeout(handleNext, 5000);
-        return () => clearTimeout(timer); // Limpa o timer ao mudar de story
+        return () => clearTimeout(timer);
     }, [currentIndex, userStories, handleNext]);
 
     const handleDelete = async (e) => {
-        e.stopPropagation(); // Impede que o clique feche o overlay
+        e.stopPropagation();
         const storyIdToDelete = userStories.stories[currentIndex]._id;
 
         if (window.confirm("Tem certeza que deseja apagar este story?")) {
             try {
                 await api.delete(`/stories/${storyIdToDelete}`);
                 alert("Story apagado com sucesso.");
-                onClose(true); // Fecha o visualizador e passa 'true' para indicar que algo foi deletado
+                onClose(true);
             } catch (error) {
                 console.error("Erro ao apagar o story", error);
                 alert("Não foi possível apagar o story.");
@@ -150,18 +156,26 @@ const FullscreenStoryViewer = ({ userStories, onClose }) => {
 
     const isMyStory = userStories.userId === loggedInUser?._id;
 
+    // Função para garantir que a URL da imagem esteja correta
+    const getImageUrl = (url) => {
+        if (!url) return '';
+        return url.startsWith('http') ? url : `${API_URL}${url}`;
+    };
+
     return (
         <FullscreenOverlay onClick={onClose}>
-            <CloseButton onClick={onClose}>&times;</CloseButton>
+            <CloseButton onClick={(e) => {e.stopPropagation(); onClose()}}>&times;</CloseButton>
             <StoryContentWrapper onClick={(e) => e.stopPropagation()}>
                 <ProgressBarContainer>
-                    <ProgressBar key={currentIndex} /> {/* A 'key' reinicia a animação */}
+                    <ProgressBar key={currentIndex} />
                 </ProgressBarContainer>
 
                 <NavArea className="prev" onClick={handlePrev} />
-                <NavArea className="next" onClick={handleNext} />
+                <NavArea className="next" onClick={handleNextClick} />
                 
-                <StoryImage src={`${API_URL}${currentStory.mediaUrl}`} alt="Story" />
+                {/* CORREÇÃO AQUI: Usando a função getImageUrl para o story */}
+                <StoryImage src={getImageUrl(currentStory.mediaUrl)} alt="Story" />
+                
                 {isMyStory && (
                     <DeleteButton onClick={handleDelete}>
                         <FaTrash />

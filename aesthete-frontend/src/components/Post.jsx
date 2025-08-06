@@ -2,18 +2,16 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import axios from 'axios';
+import api, { API_URL } from '../api/axios'; // Importa a instância 'api' e a 'API_URL'
 
 // --- Styled Components ---
-
-const ENDPOINT = process.env.REACT_APP_API_URL;
 
 const PostContainer = styled.div`
   background-color: #fff;
   border: 1px solid #dbdbdb;
   border-radius: 8px;
   margin-bottom: 24px;
-  max-width: 615px; /* Define uma largura máxima para o post */
+  max-width: 615px;
 `;
 
 const PostHeader = styled.div`
@@ -117,10 +115,11 @@ const Post = ({ post: initialPost, onCommentClick }) => {
         
         setPost({ ...post, likes: newLikes });
 
-        const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-        await axios.post(`${ENDPOINT}/api/posts/${post._id}/like`, {}, config);
+        // Corrigido: Usa a instância 'api' que já contém o token.
+        await api.post(`/posts/${post._id}/like`);
     } catch (error) {
         console.error("Erro ao curtir o post", error);
+        // Reverte a UI em caso de erro
         setPost(initialPost);
     }
   };
@@ -128,9 +127,11 @@ const Post = ({ post: initialPost, onCommentClick }) => {
   const handleDelete = async () => {
     if (window.confirm("Tem certeza que deseja deletar este post?")) {
         try {
-            const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            await axios.delete(`${ENDPOINT}/api/posts/${post._id}`, config);
+            // Corrigido: Usa a instância 'api'
+            await api.delete(`/posts/${post._id}`);
             alert("Post deletado com sucesso!");
+            // Recarrega a página para refletir a exclusão.
+            // Em uma aplicação maior, seria melhor remover o post do estado global.
             window.location.reload(); 
         } catch (error) {
             console.error("Erro ao deletar o post", error);
@@ -141,11 +142,18 @@ const Post = ({ post: initialPost, onCommentClick }) => {
 
   if (!post || !post.user) return null;
 
+  // Função para garantir que a URL da imagem esteja correta
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `${API_URL}${url}`;
+  };
+
   return (
     <PostContainer>
       <PostHeader>
         <Link to={`/perfil/${post.user.username}`}>
-          <img src={post.mediaUrl} />
+          {/* Corrigido: Usando o avatar do usuário e a função getImageUrl */}
+          <img src={getImageUrl(post.user.avatar)} alt={`${post.user.username}'s avatar`} />
         </Link>
         <Link to={`/perfil/${post.user.username}`}>
           <strong>{post.user.username}</strong>
@@ -154,7 +162,8 @@ const Post = ({ post: initialPost, onCommentClick }) => {
       </PostHeader>
 
       <Link to={`/post/${post._id}`}>
-        <PostImage src={`${ENDPOINT}${post.mediaUrl}`} alt={post.caption} />
+         {/* Corrigido: Usando a função getImageUrl para a imagem do post */}
+        <PostImage src={getImageUrl(post.mediaUrl)} alt={post.caption} />
       </Link>
       
       <PostActions>
@@ -174,9 +183,11 @@ const Post = ({ post: initialPost, onCommentClick }) => {
           </Link>
           {' '}{post.caption}
         </p>
-        <Link to={`/post/${post._id}`}>
-            <span>Ver todos os {post.comments.length} comentários</span>
-        </Link>
+        {post.comments.length > 0 && (
+            <Link to={`/post/${post._id}`}>
+                <span>Ver todos os {post.comments.length} comentários</span>
+            </Link>
+        )}
       </PostFooter>
     </PostContainer>
   );

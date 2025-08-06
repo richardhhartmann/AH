@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useSelector } from 'react-redux';
-import { useLocation, Link } from 'react-router-dom'; // <-- CORREÇÃO: 'Link' foi adicionado
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useLocation, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import api, { API_URL } from '../api/axios'; // <-- CORREÇÃO: 'api' e 'API_URL' foram importados
+import api, { API_URL } from '../api/axios';
 import io from 'socket.io-client';
+import { FiCheck } from "react-icons/fi";
+import { fetchChats, markChatAsReadInState, updateChatStateFromSocket } from '../features/chat/chatSlice';
 
-// --- Styled Components para o Layout ---
-
+// --- Styled Components ---
 const ChatContainer = styled.div`
   display: flex;
-  height: calc(100vh - 90px); /* Altura da tela menos a navbar e um pouco de padding */
+  height: calc(100vh - 90px);
   max-width: 935px;
   margin: 20px auto;
   border: 1px solid #dbdbdb;
@@ -25,20 +26,71 @@ const ChatList = styled.div`
 const ChatItem = styled.div`
   display: flex;
   align-items: center;
-  padding: 15px;
+  padding: 10px 15px;
   cursor: pointer;
   background-color: ${props => props.isActive ? '#efefef' : 'transparent'};
+  position: relative;
+  &:hover { background-color: #fafafa; }
+`;
 
-  &:hover {
-    background-color: #fafafa;
-  }
+const AvatarWrapper = styled.div`
+  position: relative;
+  flex-shrink: 0;
+`;
 
-  img {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    margin-right: 15px;
-  }
+const Avatar = styled.img`
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  margin-right: 15px;
+  border: ${props => props.hasStory ? '3px solid rgb(254, 121, 13)' : '3px solid transparent'};
+  padding: 2px;
+`;
+
+const OnlineIndicator = styled.div`
+  position: absolute;
+  bottom: 5px;
+  right: 15px;
+  width: 12px;
+  height: 12px;
+  background-color: #2ecc71;
+  border-radius: 50%;
+  border: 2px solid white;
+`;
+
+const ChatInfo = styled.div`
+  overflow: hidden;
+  flex-grow: 1;
+`;
+
+const LastMessage = styled.p`
+  font-size: 0.85rem;
+  color: #8e8e8e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+`;
+
+const TypingIndicator = styled(LastMessage)`
+  color: #0095f6;
+  font-style: italic;
+`;
+
+const UnreadBadge = styled.div`
+  background-color: rgb(254, 121, 13);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 `;
 
 const ChatWindow = styled.div`
@@ -67,7 +119,7 @@ const MessageBubble = styled.div`
   border-radius: 20px;
   margin-bottom: 10px;
   align-self: ${props => props.isMe ? 'flex-end' : 'flex-start'};
-  background-color: ${props => props.isMe ? '#0095f6' : '#efefef'};
+  background-color: ${props => props.isMe ? 'rgba(255, 142, 50, 1)' : '#efefef'};
   color: ${props => props.isMe ? 'white' : 'black'};
 `;
 
@@ -75,7 +127,6 @@ const MessageForm = styled.form`
   display: flex;
   padding: 10px;
   border-top: 1px solid #dbdbdb;
-
   input {
     flex-grow: 1;
     border: 1px solid #dbdbdb;
@@ -94,88 +145,105 @@ const Placeholder = styled.div`
     color: #8e8e8e;
 `;
 
-// --- Configuração do Socket.IO ---
+// --- Configuração ---
 const ENDPOINT = process.env.REACT_APP_API_URL;
 let socket;
+let typingTimeout;
 
 // --- Componente ---
 const ChatPage = () => {
-    const { user: loggedInUser } = useSelector((state) => state.auth);
+    const dispatch = useDispatch();
     const location = useLocation();
 
-    const [chats, setChats] = useState([]);
+    const { user: loggedInUser } = useSelector((state) => state.auth);
+    const { chats } = useSelector((state) => state.chat);
+
     const [selectedChat, setSelectedChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
+    const [onlineUsers, setOnlineUsers] = useState([]);
+    const [typingChats, setTypingChats] = useState([]);
     
     const messagesEndRef = useRef(null);
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
-    useEffect(scrollToBottom, [messages]);
+    const selectedChatRef = useRef(null);
 
     useEffect(() => {
-        socket = io(ENDPOINT);
-        socket.emit('setup', loggedInUser);
+        selectedChatRef.current = selectedChat;
+    }, [selectedChat]);
 
-        const fetchChats = async () => {
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
+    const handleSelectChat = useCallback(async (chat) => {
+        setSelectedChat(chat);
+        if (chat.unreadCount > 0) {
             try {
-                const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-                const { data } = await api.get('/chats', config);
-                setChats(data);
+                await api.put(`/chats/${chat._id}/read`);
+                dispatch(markChatAsReadInState(chat._id));
+            } catch (error) { 
+                console.error("Erro ao marcar chat como lido", error); 
+            }
+        }
+    }, [dispatch]);
 
-                if (location.state?.chatId) {
-                    const chatToSelect = data.find(c => c._id === location.state.chatId);
-                    if (chatToSelect) setSelectedChat(chatToSelect);
-                }
-            } catch (error) { console.error("Erro ao buscar conversas", error); }
-        };
-        fetchChats();
-
-        return () => { socket.disconnect(); };
-    }, [loggedInUser, location.state]);
-
+    useEffect(() => {
+        if (location.state?.chatId && chats.length > 0) {
+            const chatToSelect = chats.find(c => c._id === location.state.chatId);
+            if (chatToSelect) {
+                handleSelectChat(chatToSelect);
+            }
+        }
+    }, [chats, location.state, handleSelectChat]);
+    
     useEffect(() => {
         if (!selectedChat) return;
-
+        
         const fetchMessages = async () => {
             try {
                 const { data } = await api.get(`/chats/${selectedChat._id}/messages`);
                 setMessages(data);
-                socket.emit('joinChat', selectedChat._id);
-            } catch (error) { console.error("Erro ao buscar mensagens", error); }
+                if(socket) socket.emit('joinChat', selectedChat._id);
+            } catch (error) { 
+                console.error("Erro ao buscar mensagens", error); 
+            }
         };
         fetchMessages();
     }, [selectedChat]);
 
-    useEffect(() => {
-        const messageListener = (newMessageReceived) => {
-            if (selectedChat && selectedChat._id === newMessageReceived.chat._id) {
-                setMessages(prevMessages => [...prevMessages, newMessageReceived]);
-            }
-        };
-        socket.on('messageReceived', messageListener);
-        return () => { socket.off('messageReceived', messageListener); };
-    });
+    const handleTyping = (e) => {
+        setNewMessage(e.target.value);
+        if (!socket || !selectedChat) return;
+        socket.emit('typing', selectedChat._id);
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            socket.emit('stopTyping', selectedChat._id);
+        }, 3000);
+    };
 
     const sendMessage = async (e) => {
         e.preventDefault();
-        if (newMessage.trim()) {
-            const tempMessage = {
-                sender: loggedInUser,
-                content: newMessage,
-                chat: selectedChat,
-                createdAt: new Date().toISOString()
-            };
-            socket.emit('newMessage', tempMessage);
-            setMessages([...messages, tempMessage]);
-            setNewMessage('');
-        }
+        if (!newMessage.trim() || !selectedChat) return;
+        
+        socket.emit('stopTyping', selectedChat._id);
+        
+        const tempMessage = {
+            sender: { _id: loggedInUser._id, username: loggedInUser.username, avatar: loggedInUser.avatar },
+            content: newMessage,
+            chat: selectedChat,
+            _id: Date.now().toString()
+        };
+        
+        socket.emit('newMessage', tempMessage);
+        setMessages(prev => [...prev, tempMessage]);
+        setNewMessage('');
+        
+        // Atualiza a lista de conversas no Redux
+        dispatch(updateChatStateFromSocket({ ...tempMessage, meta: { arg: { userId: loggedInUser._id } } }));
     };
 
     const getOtherUser = (chat) => {
+        if (!chat?.participants) return null;
         return chat.participants.find(p => p._id !== loggedInUser._id);
     };
 
@@ -184,18 +252,34 @@ const ChatPage = () => {
             <ChatList>
                 {chats.map(chat => {
                     const otherUser = getOtherUser(chat);
-
-                    // --- AQUI ESTÁ A CORREÇÃO ---
-                    // Se 'otherUser' não for encontrado, pulamos a renderização
-                    // deste item para evitar o erro.
-                    if (!otherUser) {
-                        return null;
-                    }
+                    if (!otherUser) return null;
+                    const isUserOnline = onlineUsers.includes(otherUser._id);
+                    const isChatTyping = typingChats.includes(chat._id);
 
                     return (
-                        <ChatItem key={chat._id} onClick={() => setSelectedChat(chat)} isActive={selectedChat?._id === chat._id}>
-                            <img src={otherUser.avatar.startsWith('http') ? otherUser.avatar : `${API_URL}${otherUser.avatar}`} alt={otherUser.username} />
-                            <span>{otherUser.username}</span>
+                        <ChatItem key={chat._id} onClick={() => handleSelectChat(chat)} isActive={selectedChat?._id === chat._id}>
+                            <AvatarWrapper>
+                                <Avatar 
+                                    src={otherUser.avatar?.startsWith('http') ? otherUser.avatar : `${API_URL}${otherUser.avatar}`} 
+                                    alt={otherUser.username}
+                                    hasStory={otherUser.hasActiveStory}
+                                />
+                                {isUserOnline && <OnlineIndicator />}
+                            </AvatarWrapper>
+                            <ChatInfo>
+                                <strong>{otherUser.username}</strong>
+                                {isChatTyping ? (
+                                    <TypingIndicator>digitando...</TypingIndicator>
+                                ) : (
+                                    <LastMessage>
+                                        {chat.lastMessage?.sender?._id === loggedInUser._id && (
+                                            <FiCheck size={16} title="Enviado por você"/>
+                                        )}
+                                        {chat.lastMessage ? chat.lastMessage.content : 'Inicie a conversa'}
+                                    </LastMessage>
+                                )}
+                            </ChatInfo>
+                            {chat.unreadCount > 0 && <UnreadBadge>{chat.unreadCount}</UnreadBadge>}
                         </ChatItem>
                     );
                 })}
@@ -221,13 +305,11 @@ const ChatPage = () => {
                             type="text"
                             placeholder="Digite uma mensagem..."
                             value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
+                            onChange={handleTyping}
                         />
                     </MessageForm>
                 </ChatWindow>
-            ) : (
-                <Placeholder>Selecione uma conversa para começar.</Placeholder>
-            )}
+            ) : ( <Placeholder>Selecione uma conversa para começar.</Placeholder> )}
         </ChatContainer>
     );
 };

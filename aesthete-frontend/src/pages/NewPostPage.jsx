@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios';
 import styled from 'styled-components';
 
 const ENDPOINT = process.env.REACT_APP_API_URL;
@@ -95,16 +95,11 @@ const NewPostPage = () => {
         formData.append('caption', caption);
 
         try {
-            // 3. Configura os headers da requisição com o token de autorização
-            const config = {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${user.token}`,
-                }
-            };
-
-            // 4. Envia a requisição POST para a API do backend
-            await axios.post(`${ENDPOINT}/api/posts`, formData, config);
+            await api.post('/posts', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            }
+        });
 
             alert('Post criado com sucesso!');
             navigate('/'); // Redireciona para o feed após o sucesso

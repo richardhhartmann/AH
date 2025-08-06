@@ -91,10 +91,10 @@ const SignupLink = styled.div`
 // --- Componente ---
 const LoginPage = () => {
     const [formData, setFormData] = useState({
-        email: '',
+        identifier: '', // ANTES: email: ''
         password: '',
     });
-    const { email, password } = formData;
+    const { identifier, password } = formData; // ANTES: email, password
 
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -122,7 +122,7 @@ const LoginPage = () => {
 
     const onSubmit = (e) => {
         e.preventDefault();
-        const userData = { email, password };
+        const userData = { identifier, password }; // ANTES: { email, password }
         dispatch(login(userData));
     };
 
@@ -132,10 +132,10 @@ const LoginPage = () => {
                 <Logo>Ah</Logo>
                 <StyledForm onSubmit={onSubmit}>
                     <StyledInput
-                        type="email"
-                        name="email"
-                        value={email}
-                        placeholder="E-mail"
+                        type="text" // ANTES: type="email"
+                        name="identifier" // ANTES: name="email"
+                        value={identifier} // ANTES: value={email}
+                        placeholder="Nome de usuário ou e-mail" // ANTES: placeholder="E-mail"
                         onChange={onChange}
                         required
                     />

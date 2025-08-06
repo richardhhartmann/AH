@@ -1,26 +1,32 @@
-// Crie este arquivo: src/routes/postRoutes.js
-
 const express = require('express');
 const router = express.Router();
-const { createPost, getFeedPosts, likePost, getPostById, deletePost } = require('../controllers/postController');
+const { 
+    createPost, 
+    getFeedPosts, 
+    likePost, 
+    getPostById, 
+    deletePost,
+    addCommentToPost 
+} = require('../controllers/postController');
 const { protect } = require('../middlewares/authMiddleware');
 const upload = require('../config/cloudinary');
-const { addCommentToPost } = require('../controllers/postController');
 
-
-router.get('/feed', protect, getFeedPosts);
-
-router.post('/:id/like', protect, likePost);
+// Rota para criar um novo post.
 router.post('/', protect, upload.single('media'), createPost);
 
-router.post('/', protect, createPost);
+// Rota para buscar o feed de posts
+router.get('/feed', protect, getFeedPosts);
 
-router.route('/:id').get(getPostById);
+// Rota para buscar um post específico pelo ID
+router.get('/:id', getPostById);
 
-router.route('/:id').delete(protect, deletePost);
+// Rota para deletar um post
+router.delete('/:id', protect, deletePost);
 
-router.route('/:id/like').post(protect, likePost);
+// Rota para curtir/descurtir um post
+router.post('/:id/like', protect, likePost);
 
+// Rota para adicionar um comentário a um post
 router.post('/:id/comment', protect, addCommentToPost);
 
 module.exports = router;

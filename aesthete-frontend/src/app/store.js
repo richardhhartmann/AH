@@ -1,10 +1,11 @@
+// Em src/app/store.js
 import { configureStore } from '@reduxjs/toolkit';
-// Importe seus "slices" aqui. Por enquanto, teremos apenas o de autenticação.
 import authReducer from '../features/auth/authSlice';
+import chatReducer from '../features/chat/chatSlice'; // 1. Importe o novo redutor
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    // posts: postsReducer, // Exemplo futuro
+    chat: chatReducer, // 2. Adicione-o aqui
   },
 });
