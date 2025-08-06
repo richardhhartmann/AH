@@ -5,7 +5,7 @@ import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import Modal from '../components/Modal';
 import FullscreenStoryViewer from '../components/FullscreenStoryViewer';
-import { BsChat } from "react-icons/bs"; // Importando o ícone de chat
+import { IoChatbubbles } from "react-icons/io5";
 
 // --- Styled Components ---
 
@@ -46,7 +46,7 @@ const UsernameRow = styled.div`
   gap: 10px;
   h2 {
     font-size: 28px;
-    font-weight: 300;
+    font-weight: 600;
     margin-right: 20px;
   }
 `;
@@ -82,7 +82,11 @@ const StatsRow = styled.div`
     font-size: 16px;
     cursor: pointer;
     &:hover { text-decoration: underline; }
-    strong { font-weight: 600; }
+
+    strong {
+      font-weight: 600;
+      color: rgb(254, 121, 13); /* Aqui está a mudança */
+    }
   }
 `;
 
@@ -212,7 +216,7 @@ const ProfilePage = () => {
             <ProfileHeader>
                 <AvatarContainer onClick={openStoryViewer}>
                     <Avatar 
-                        src={`${API_URL}${user.avatar}`} 
+                        src={user.avatar}
                         alt={`${user.username}'s avatar`}
                         hasStory={hasActiveStory}
                     />
@@ -228,7 +232,7 @@ const ProfilePage = () => {
                                     {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
                                 </ActionButton>
                                 <ChatButton onClick={handleStartChat}>
-                                    <BsChat size={16} />
+                                    <IoChatbubbles size={16} />
                                 </ChatButton>
                             </>
                         )}
@@ -240,7 +244,6 @@ const ProfilePage = () => {
                         <p onClick={openFollowingModal}><strong>{followingCount}</strong> seguindo</p>
                     </StatsRow>
                     <Bio>
-                        <p>{user.username}</p>
                         <span>{user.bio}</span>
                     </Bio>
                 </ProfileInfo>
@@ -250,7 +253,7 @@ const ProfilePage = () => {
                 {posts.map(post => (
                     <Link key={post._id} to={`/post/${post._id}`}>
                         <PostThumbnail>
-                            <img src={`${API_URL}${post.mediaUrl}`} alt={post.caption} />
+                            <img src={post.mediaUrl} />
                         </PostThumbnail>
                     </Link>
                 ))}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import { useLocation } from 'react-router-dom';
-import axios from 'axios';
-import io from 'socket.io-client';
+import { useLocation, Link } from 'react-router-dom'; // <-- CORREÇÃO: 'Link' foi adicionado
 import styled from 'styled-components';
+import api, { API_URL } from '../api/axios'; // <-- CORREÇÃO: 'api' e 'API_URL' foram importados
+import io from 'socket.io-client';
 
 // --- Styled Components para o Layout ---
 
@@ -101,26 +101,21 @@ let socket;
 // --- Componente ---
 const ChatPage = () => {
     const { user: loggedInUser } = useSelector((state) => state.auth);
-    const location = useLocation(); // Para pegar o chatId vindo da página de perfil
+    const location = useLocation();
 
     const [chats, setChats] = useState([]);
     const [selectedChat, setSelectedChat] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     
-    const messagesEndRef = useRef(null); // Referência para o final da lista de mensagens
+    const messagesEndRef = useRef(null);
 
-    // Função para rolar para o final da lista de mensagens
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    // Efeito para rolar para o final sempre que novas mensagens chegarem
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+    useEffect(scrollToBottom, [messages]);
 
-    // Efeito para configurar o Socket.IO e buscar as conversas
     useEffect(() => {
         socket = io(ENDPOINT);
         socket.emit('setup', loggedInUser);
@@ -128,74 +123,58 @@ const ChatPage = () => {
         const fetchChats = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-                const { data } = await axios.get(`${ENDPOINT}/api/chats`, config);
+                const { data } = await api.get('/chats', config);
                 setChats(data);
 
-                // Se viemos da página de perfil, seleciona o chat automaticamente
                 if (location.state?.chatId) {
                     const chatToSelect = data.find(c => c._id === location.state.chatId);
                     if (chatToSelect) setSelectedChat(chatToSelect);
                 }
-            } catch (error) {
-                console.error("Erro ao buscar conversas", error);
-            }
+            } catch (error) { console.error("Erro ao buscar conversas", error); }
         };
         fetchChats();
 
         return () => { socket.disconnect(); };
     }, [loggedInUser, location.state]);
 
-    // Efeito para buscar as mensagens quando um chat é selecionado
     useEffect(() => {
         if (!selectedChat) return;
 
         const fetchMessages = async () => {
             try {
-                const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-                const { data } = await axios.get(`${ENDPOINT}/api/chats/${selectedChat._id}/messages`, config);
+                const { data } = await api.get(`/chats/${selectedChat._id}/messages`);
                 setMessages(data);
                 socket.emit('joinChat', selectedChat._id);
-            } catch (error) {
-                console.error("Erro ao buscar mensagens", error);
-            }
+            } catch (error) { console.error("Erro ao buscar mensagens", error); }
         };
         fetchMessages();
-    }, [selectedChat, loggedInUser.token]);
+    }, [selectedChat]);
 
-    // Efeito para escutar novas mensagens em tempo real
     useEffect(() => {
-        socket.on('messageReceived', (newMessageReceived) => {
+        const messageListener = (newMessageReceived) => {
             if (selectedChat && selectedChat._id === newMessageReceived.chat._id) {
                 setMessages(prevMessages => [...prevMessages, newMessageReceived]);
             }
-        });
-
-        return () => { socket.off('messageReceived'); };
+        };
+        socket.on('messageReceived', messageListener);
+        return () => { socket.off('messageReceived', messageListener); };
     });
 
     const sendMessage = async (e) => {
         e.preventDefault();
         if (newMessage.trim()) {
-            try {
-                const messageData = {
-                    sender: loggedInUser,
-                    content: newMessage,
-                    chat: selectedChat,
-                };
-                
-                // Atualização otimista: adiciona a mensagem à UI imediatamente
-                setMessages([...messages, messageData]);
-                setNewMessage('');
-
-                // Envia a mensagem para o servidor via socket
-                socket.emit('newMessage', messageData);
-            } catch (error) {
-                console.error("Erro ao enviar mensagem", error);
-            }
+            const tempMessage = {
+                sender: loggedInUser,
+                content: newMessage,
+                chat: selectedChat,
+                createdAt: new Date().toISOString()
+            };
+            socket.emit('newMessage', tempMessage);
+            setMessages([...messages, tempMessage]);
+            setNewMessage('');
         }
     };
 
-    // Função auxiliar para pegar o nome e foto do outro usuário na conversa
     const getOtherUser = (chat) => {
         return chat.participants.find(p => p._id !== loggedInUser._id);
     };
@@ -205,9 +184,17 @@ const ChatPage = () => {
             <ChatList>
                 {chats.map(chat => {
                     const otherUser = getOtherUser(chat);
+
+                    // --- AQUI ESTÁ A CORREÇÃO ---
+                    // Se 'otherUser' não for encontrado, pulamos a renderização
+                    // deste item para evitar o erro.
+                    if (!otherUser) {
+                        return null;
+                    }
+
                     return (
                         <ChatItem key={chat._id} onClick={() => setSelectedChat(chat)} isActive={selectedChat?._id === chat._id}>
-                            <img src={`${ENDPOINT}${otherUser.avatar}`} alt={otherUser.username} />
+                            <img src={otherUser.avatar.startsWith('http') ? otherUser.avatar : `${API_URL}${otherUser.avatar}`} alt={otherUser.username} />
                             <span>{otherUser.username}</span>
                         </ChatItem>
                     );
@@ -216,10 +203,14 @@ const ChatPage = () => {
             
             {selectedChat ? (
                 <ChatWindow>
-                    <ChatWindowHeader>{getOtherUser(selectedChat).username}</ChatWindowHeader>
+                    <ChatWindowHeader>
+                        <Link to={`/perfil/${getOtherUser(selectedChat).username}`}>
+                            {getOtherUser(selectedChat).username}
+                        </Link>
+                    </ChatWindowHeader>
                     <MessageList>
                         {messages.map((msg, i) => (
-                            <MessageBubble key={i} isMe={msg.sender._id === loggedInUser._id}>
+                            <MessageBubble key={msg._id || i} isMe={msg.sender._id === loggedInUser._id}>
                                 {msg.content}
                             </MessageBubble>
                         ))}
@@ -235,7 +226,7 @@ const ChatPage = () => {
                     </MessageForm>
                 </ChatWindow>
             ) : (
-                <Placeholder>Selecione uma conversa para começar a conversar.</Placeholder>
+                <Placeholder>Selecione uma conversa para começar.</Placeholder>
             )}
         </ChatContainer>
     );

@@ -145,7 +145,7 @@ const Post = ({ post: initialPost, onCommentClick }) => {
     <PostContainer>
       <PostHeader>
         <Link to={`/perfil/${post.user.username}`}>
-          <img src={`${ENDPOINT}${post.user.avatar}`} alt={post.user.username} />
+          <img src={post.mediaUrl} />
         </Link>
         <Link to={`/perfil/${post.user.username}`}>
           <strong>{post.user.username}</strong>

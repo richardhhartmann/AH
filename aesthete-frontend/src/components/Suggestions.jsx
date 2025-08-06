@@ -121,7 +121,7 @@ const Suggestions = () => {
             {suggestions.map(user => (
                 <UserItem key={user._id}>
                     <Link to={`/perfil/${user.username}`}>
-                        <Avatar src={`${API_URL}${user.avatar}`} alt={user.username} />
+                        <Avatar src={user.avatar} alt={user.username} />
                     </Link>
                     <UserInfo>
                         <div>

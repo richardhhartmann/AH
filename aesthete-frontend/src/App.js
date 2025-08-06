@@ -12,6 +12,7 @@ import SinglePostPage from './pages/SinglePostPage';
 import EditProfilePage from './pages/EditProfilePage';
 import ChatPage from './pages/ChatPage';
 import NewStoryPage from './pages/NewStoryPage'
+import CreatePage from './pages/CreatePage';
 
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
           <Route path="/redefinir-senha/:resettoken" element={<ResetPasswordPage />} />
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/stories/novo" element={<NewStoryPage />} />
+          <Route path="/criar" element={<CreatePage />} />
         </Routes>
       </main>
     </Router>

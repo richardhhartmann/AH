@@ -75,7 +75,6 @@ const StoriesBar = () => {
                         onClick={() => handleStoryClick(myStories)}
                         allViewed={myStories.stories.every(story => viewedStories.includes(story._id))}
                     >
-                        <img src={`${API_URL}${myStories.avatar}`} alt="Seu story" />
                         <p>Seu story</p>
                     </StoryCircle>
                 )}
@@ -88,7 +87,6 @@ const StoriesBar = () => {
                             onClick={() => handleStoryClick(userStories)}
                             allViewed={allStoriesViewed}
                         >
-                            <img src={`${API_URL}${userStories.avatar}`} alt={userStories.username} />
                             <p>{userStories.username}</p>
                         </StoryCircle>
                     );
