@@ -11,7 +11,7 @@ exports.createStory = async (req, res) => {
             return res.status(400).json({ message: 'Nenhum arquivo de mídia enviado.' });
         }
 
-        const mediaUrl = '/' + req.file.path.replace(/\\/g, '/');
+        const mediaUrl = req.file.path;
 
         const story = new Story({
             mediaUrl,

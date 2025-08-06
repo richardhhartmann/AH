@@ -88,7 +88,7 @@ exports.updateUserProfile = async (req, res) => {
                         fs.unlinkSync(oldAvatarPath);
                     }
                 }
-                user.avatar = '/' + req.file.path.replace(/\\/g, '/');
+                user.avatar = req.file.path;
             }
 
             // Se uma nova senha foi fornecida

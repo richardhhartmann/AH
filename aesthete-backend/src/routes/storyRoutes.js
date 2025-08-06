@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middlewares/authMiddleware');
-const upload = require('../middlewares/uploadMiddleware');
+const upload = require('../config/cloudinary');
 
 const { 
     createStory, 

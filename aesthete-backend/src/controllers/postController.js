@@ -17,7 +17,7 @@ exports.createPost = async (req, res) => {
 
         // 3. Pegamos o caminho do arquivo salvo pelo multer
         // O req.file.path pode vir com barras invertidas (\) no Windows. Convertemos para barras normais (/) para consistência de URL.
-        const mediaUrl = '/' + req.file.path.replace(/\\/g, '/');
+        const mediaUrl = req.file.path;
 
         const post = new Post({
             caption,
