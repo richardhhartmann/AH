@@ -19,34 +19,30 @@ const chatSlice = createSlice({
     initialState,
     reducers: {
         updateChatStateFromSocket: (state, action) => {
-            // Agora esperamos um payload com 'newMessage' e 'loggedInUserId'
             const { newMessage, loggedInUserId } = action.payload;
-
             let chatExists = false;
 
             const updatedChats = state.chats.map(chat => {
                 if (chat._id === newMessage.chat._id) {
                     chatExists = true;
-                    // A verificação agora usa o 'loggedInUserId' que passamos no payload
                     const newUnreadCount = (chat.unreadCount || 0) + (newMessage.sender._id !== loggedInUserId ? 1 : 0);
                     return { ...chat, lastMessage: newMessage, unreadCount: newUnreadCount };
                 }
                 return chat;
             });
-
+            
             if (chatExists) {
                 const chatToMove = updatedChats.find(chat => chat._id === newMessage.chat._id);
                 const otherChats = updatedChats.filter(chat => chat._id !== newMessage.chat._id);
                 state.chats = [chatToMove, ...otherChats];
             }
-            
-            // Recalcula o total de não lidas
-            state.totalUnreadCount = state.chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+
+            // --- LÓGICA CORRIGIDA ---
+            // Contamos quantos chats têm unreadCount > 0
+            state.totalUnreadCount = state.chats.filter(chat => chat.unreadCount > 0).length;
         },
-        // Reducer para zerar a contagem de um chat específico
         markChatAsReadInState: (state, action) => {
             const chatId = action.payload;
-            let totalUnread = 0;
             state.chats = state.chats.map(chat => {
                 if (chat._id === chatId) {
                     return { ...chat, unreadCount: 0 };
@@ -54,10 +50,9 @@ const chatSlice = createSlice({
                 return chat;
             });
 
-            state.chats.forEach(chat => {
-                totalUnread += chat.unreadCount || 0;
-            });
-            state.totalUnreadCount = totalUnread;
+            // --- LÓGICA CORRIGIDA ---
+            // Recalculamos quantos chats têm unreadCount > 0
+            state.totalUnreadCount = state.chats.filter(chat => chat.unreadCount > 0).length;
         }
     },
     extraReducers: (builder) => {
@@ -68,8 +63,10 @@ const chatSlice = createSlice({
             .addCase(fetchChats.fulfilled, (state, action) => {
                 state.status = 'succeeded';
                 state.chats = action.payload;
-                // Calcula o total de mensagens não lidas
-                state.totalUnreadCount = action.payload.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+                
+                // --- LÓGICA CORRIGIDA ---
+                // Contamos quantos chats têm unreadCount > 0
+                state.totalUnreadCount = action.payload.filter(chat => chat.unreadCount > 0).length;
             })
             .addCase(fetchChats.rejected, (state, action) => {
                 state.status = 'failed';

@@ -229,28 +229,12 @@ const usersData = [
         bio: 'Dermatologia clínica e estética. Saúde da pele em primeiro lugar. #dermatology',
     },
     {
-        username: 'laura_freitas',
-        email: 'laura.freitas@example.com',
-        password: 'password123',
-        profession: 'Esteticista',
-        avatar: 'https://images.unsplash.com/photo-1614283628042-ab43c2455d78?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDV8fHByb2ZpbGUlMjBwaG90b3xlbnwwfHwwfHx8MA%3D%3D',
-        bio: 'Expert em limpeza de pele e tratamentos faciais. Cuidar de você é a minha paixão. 🧖‍♀️',
-    },
-    {
         username: 'andre_silva',
         email: 'andre.silva@example.com',
         password: 'password123',
         profession: 'Especialista em Posicionamento',
         avatar: 'https://images.unsplash.com/photo-1618641986557-1ecd230959aa?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fG1hbnxlbnwwfHwwfHx8MA%3D%3D',
         bio: 'Estrategista de marca para profissionais da saúde e beleza. Construa uma marca de autoridade.',
-    },
-    {
-        username: 'patricia_nunes',
-        email: 'patricia.nunes@example.com',
-        password: 'password123',
-        profession: 'Biomédico',
-        avatar: 'https://images.unsplash.com/photo-1571175443880-49e1d25b2d65?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzB8fGRvY3RvcnxlbnwwfHwwfHx8MA%3D%3D',
-        bio: 'Focada em bioestimuladores e fios de PDO. Rejuvenescimento com ciência e segurança.',
     },
     {
         username: 'marcelo_campos',
@@ -345,9 +329,7 @@ const importData = async () => {
             { user: userMap.leonardo_ribeiro._id, caption: 'Morena iluminada com tons de mel. A cor perfeita para o outono! 🍂 O que acharam? #colorimetria #cabelos', mediaUrl: 'https://images.pexels.com/photos/2811088/pexels-photo-2811088.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.clara_martins._id, caption: 'Micropigmentação fio a fio para preencher e definir. Naturalidade é tudo! #microblading #sobrancelhasperfeitas', mediaUrl: 'https://images.pexels.com/photos/3738347/pexels-photo-3738347.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.daniel_moraes._id, caption: 'Mito ou verdade: pele oleosa não precisa de hidratante? 🤔 MITO! A hidratação equilibra a produção de sebo. Use produtos oil-free!', mediaUrl: 'https://images.pexels.com/photos/4046313/pexels-photo-4046313.jpeg?auto=compress&cs=tinysrgb&w=500' },
-            { user: userMap.laura_freitas._id, caption: 'Protocolo de hidratação profunda com ácido hialurônico. Pele viçosa e saudável! Agende sua avaliação. #esteticafacial #pelehidratada', mediaUrl: 'https://images.pexels.com/photos/3985317/pexels-photo-3985317.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.andre_silva._id, caption: 'Sua marca pessoal é o que as pessoas dizem sobre você quando você não está na sala. Vamos construir a sua juntos? #branding #posicionamento', mediaUrl: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=500' },
-            { user: userMap.patricia_nunes._id, caption: 'Resultados incríveis com bioestimuladores! Estimular o colágeno natural do corpo é o segredo para um rejuvenescimento duradouro e natural.', mediaUrl: 'https://images.pexels.com/photos/7620423/pexels-photo-7620423.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.marcelo_campos._id, caption: 'A drenagem linfática no pós-operatório de cirurgias plásticas é essencial para reduzir o inchaço e acelerar a recuperação. #fisioterapiadermatofuncional #posoperatorio', mediaUrl: 'https://images.pexels.com/photos/4506269/pexels-photo-4506269.jpeg?auto=compress&cs=tinysrgb&w=500' },
             // Mais posts para usuários antigos
             { user: userMap.jacquetenorio._id, caption: 'Sextou com peeling de diamante! Renovação celular para uma pele lisinha e radiante. Quem vem? #peelingdediamante #esteticaavancada', mediaUrl: 'https://images.pexels.com/photos/3783471/pexels-photo-3783471.jpeg?auto=compress&cs=tinysrgb&w=500' },
