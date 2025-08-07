@@ -421,6 +421,7 @@ const Navbar = () => {
                         <>
                             <DesktopNavLinks>
                                 <Link to="/" title="Feed">{location.pathname === '/' ? <GoHomeFill /> : <GoHome />}</Link>
+                                
                                 <NavIconWrapper title="Notificações" ref={dropdownRef}>
                                     <div onClick={handleBellClick}>
                                         <FaRegBell />
@@ -428,24 +429,17 @@ const Navbar = () => {
                                     </div>
                                     {isDropdownOpen && (
                                         <NotificationsDropdown>
-                                            {notifications.length > 0 ? notifications.map(notif => (
-                                                <NotificationItem 
-                                                    key={notif._id} 
-                                                    to={getNotificationLink(notif)}
-                                                    onClick={() => setIsDropdownOpen(false)}
-                                                >
-                                                    <img src={notif.sender.avatar.startsWith('http') ? notif.sender.avatar : `${API_URL}${notif.sender.avatar}`} alt={notif.sender.username} />
-                                                    <p>
-                                                        <strong>{notif.sender.username}</strong>
-                                                        {' '}{getNotificationText(notif)}
-                                                    </p>
-                                                </NotificationItem>
-                                            )) : <p style={{padding: '16px', textAlign: 'center', color: '#8e8e8e'}}>Nenhuma notificação ainda.</p>}
+                                            {/* ... Dropdown de notificações ... */}
                                         </NotificationsDropdown>
                                     )}
                                 </NavIconWrapper>
+                                
+                                <Link to={`/perfil/${loggedInUser.username}`} title="Meu Perfil">
+                                    <CgProfile />
+                                </Link>
+
                             </DesktopNavLinks>
-                            
+
                             <Link to="/chat" title="Mensagens Diretas">
                                 <NavIconWrapper>
                                     {location.pathname === '/chat' ? <RiSendPlaneFill /> : <FiSend />}

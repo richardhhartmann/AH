@@ -1,3 +1,7 @@
+import path from 'path';
+const logoImage = path.resolve(__dirname, '../aesthete-frontend/src/assets/images/logo.jpg');
+console.log(logoImage);
+
 // AceleraHOF-backend/seeder.js
 
 const mongoose = require('mongoose');
@@ -85,7 +89,7 @@ const usersData = [
         email: 'admin@AceleraHOF.com',
         password: 'password123',
         profession: 'Programador', // Profissão ajustada
-        avatar: 'http://localhost:5000/uploads/avatars/logo.jpg',
+        avatar: logoImage,
         bio: 'Conectando os maiores talentos da estética. A casa do profissional de sucesso.',
         isAdmin: true,
     },

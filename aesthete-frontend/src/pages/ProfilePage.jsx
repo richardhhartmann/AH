@@ -5,24 +5,47 @@ import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import Modal from '../components/Modal';
 import FullscreenStoryViewer from '../components/FullscreenStoryViewer';
-import { IoChatbubbles } from "react-icons/io5";
+import { BsChat } from "react-icons/bs";
 
-// --- Styled Components ---
+// --- Styled Components (com Media Queries para Mobile) ---
 
 const ProfileWrapper = styled.div`
   max-width: 935px;
   margin: 0 auto;
   padding: 30px 20px;
+  @media (max-width: 768px) {
+    padding: 15px;
+  }
 `;
 
 const ProfileHeader = styled.header`
   display: flex;
   margin-bottom: 44px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    margin-bottom: 24px;
+  }
+`;
+
+const TopSection = styled.div`
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 20px;
+
+  @media (max-width: 768px) {
+    margin-bottom: 0;
+  }
 `;
 
 const AvatarContainer = styled.div`
-  margin-right: 100px;
+  margin-right: 60px;
   flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    margin-right: 30px;
+  }
 `;
 
 const Avatar = styled.img`
@@ -33,6 +56,11 @@ const Avatar = styled.img`
   cursor: ${props => props.hasStory ? 'pointer' : 'default'};
   border: ${props => props.hasStory ? '4px solid rgb(254, 121, 13)' : '3px solid #dbdbdb'};
   padding: 3px;
+
+  @media (max-width: 768px) {
+    width: 80px;
+    height: 80px;
+  }
 `;
 
 const ProfileInfo = styled.section`
@@ -44,10 +72,15 @@ const UsernameRow = styled.div`
   align-items: center;
   margin-bottom: 20px;
   gap: 10px;
+  flex-wrap: wrap;
   h2 {
     font-size: 28px;
-    font-weight: 600;
+    font-weight: 300;
     margin-right: 20px;
+  }
+  @media (max-width: 768px) {
+    margin-bottom: 10px;
+    h2 { font-size: 22px; }
   }
 `;
 
@@ -58,6 +91,7 @@ const ActionButton = styled.button`
     background-color: #efefef;
     font-weight: bold;
     cursor: pointer;
+    flex-shrink: 0;
     &.primary {
         background-color: #0095f6;
         color: white;
@@ -74,6 +108,31 @@ const ChatButton = styled(ActionButton)`
     justify-content: center;
 `;
 
+const BioAndProfessionContainer = styled.div`
+    display: block;
+    
+    @media (max-width: 768px) {
+        margin-top: 20px;
+        padding: 0 5px;
+    }
+`;
+
+const Bio = styled.div`
+  p {
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+  span {
+    line-height: 1.5;
+  }
+`;
+
+const Profession = styled.p`
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f58529;
+`;
+
 const StatsRow = styled.div`
   display: flex;
   margin-bottom: 20px;
@@ -81,43 +140,47 @@ const StatsRow = styled.div`
   p {
     margin-right: 40px;
     font-size: 16px;
-
     strong {
       font-weight: 600;
-      color: rgb(254, 121, 13);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    justify-content: space-around;
+    width: 100%;
+    padding: 12px 0;
+    
+    margin-top: 24px;
+    margin-bottom: 0;
+    order: 1; /* Faz as estatísticas aparecerem antes da bio no mobile */
+
+    p {
+        margin: 0;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        font-size: 0.9rem;
     }
   }
 
   p.clickable {
     cursor: pointer;
-    &:hover {
-      text-decoration: underline;
-    }
+    &:hover { text-decoration: underline; }
   }
 `;
 
-
-const Bio = styled.div`
-  p {
-    font-weight: 600;
-    margin-bottom: 5px;
-  }
-`;
-
-const Profession = styled.p`
-  font-size: 1rem;
-  font-weight: 600;
-  color: #f58529; /* Laranja */
-  margin-top: -10px;
-  margin-bottom: 20px;
-`;
 
 const PostGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
+  gap: 4px;
   border-top: 1px solid #dbdbdb;
-  padding-top: 30px;
+  padding-top: 15px;
+
+  @media (min-width: 769px) {
+      gap: 28px;
+      padding-top: 30px;
+  }
 `;
 
 const PostThumbnail = styled.div`
@@ -181,7 +244,6 @@ const ProfilePage = () => {
         if (!profileData) return;
         try {
             await api.put(`/users/follow/${profileData.user._id}`);
-            // Recarrega os dados do perfil para garantir consistência
             fetchProfile();
         } catch (error) {
             console.error('Erro ao seguir/deixar de seguir', error);
@@ -189,6 +251,7 @@ const ProfilePage = () => {
     };
     
     const handleStartChat = async () => {
+        if (!profileData) return;
         try {
             const { data } = await api.post('/chats', { userId: profileData.user._id });
             navigate('/chat', { state: { chatId: data._id } });
@@ -209,12 +272,11 @@ const ProfilePage = () => {
     };
     
     const openFollowersModal = async () => {
-        if (!profileData) return;
+        if (!profileData || profileData.followerCount === 0) return;
         setModalTitle('Seguidores');
         setIsModalOpen(true);
         try {
-            const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            const { data } = await api.get(`http://localhost:5000/api/users/${profileData.user._id}/followers`, config);
+            const { data } = await api.get(`/users/${profileData.user._id}/followers`);
             setModalUsers(data);
         } catch (error) {
             console.error("Erro ao buscar seguidores", error);
@@ -222,75 +284,115 @@ const ProfilePage = () => {
     };
 
     const openFollowingModal = async () => {
-        if (!profileData) return;
+        if (!profileData || profileData.followingCount === 0) return;
         setModalTitle('Seguindo');
         setIsModalOpen(true);
         try {
-            const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            const { data } = await api.get(`http://localhost:5000/api/users/${profileData.user._id}/following`, config);
+            const { data } = await api.get(`/users/${profileData.user._id}/following`);
             setModalUsers(data);
         } catch (error) {
             console.error("Erro ao buscar usuários que segue", error);
         }
     };
 
-    if (loading) return <p>Carregando perfil...</p>;
-    if (!profileData) return <p>Usuário não encontrado.</p>;
+    if (loading) return <p style={{textAlign: 'center', marginTop: '40px'}}>Carregando perfil...</p>;
+    if (!profileData) return <p style={{textAlign: 'center', marginTop: '40px'}}>Usuário não encontrado.</p>;
 
     const { user, posts, postCount, followerCount, followingCount, isFollowing, hasActiveStory } = profileData;
     const isMyProfile = loggedInUser?._id === user._id;
 
+    const DesktopOnly = styled.div`
+        display: block;
+        @media (max-width: 768px) {
+            display: none;
+        }
+    `;
+
+    const MobileOnly = styled.div`
+        display: none;
+        @media (max-width: 768px) {
+            display: block;
+        }
+    `;
+
     return (
         <ProfileWrapper>
             <ProfileHeader>
-                <AvatarContainer onClick={openStoryViewer}>
-                    <Avatar 
-                        src={
-                            (user.avatar && user.avatar !== 'default_avatar_url') 
-                            ? (user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`)
-                            : `${API_URL}/uploads/avatars/default.jpg`
-                        }
-                        alt={`${user.username}'s avatar`}
-                        hasStory={hasActiveStory}
-                    />
-                </AvatarContainer>
-                <ProfileInfo>
-                    <UsernameRow>
-                        <h2>{user.username}</h2>
-                        {isMyProfile ? (
-                            <ActionButton as={Link} to="/conta/editar">Editar Perfil</ActionButton>
-                        ) : (
-                            <>
-                                <ActionButton onClick={handleFollow} className={!isFollowing ? 'primary' : ''}>
-                                    {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
-                                </ActionButton>
-                                <ChatButton onClick={handleStartChat}>
-                                    <IoChatbubbles size={16} />
-                                </ChatButton>
-                            </>
-                        )}
-                    </UsernameRow>
-                    {user.profession && <Profession>{user.profession}</Profession>}
-                    <StatsRow>
-                        <p><strong>{postCount}</strong> publicações</p>
-                        <p className="clickable" onClick={openFollowersModal}>
-                            <strong>{followerCount}</strong> seguidores
-                        </p>
-                        <p className="clickable" onClick={openFollowingModal}>
-                            <strong>{followingCount}</strong> seguindo
-                        </p>
-                    </StatsRow>
-                    <Bio>
-                        <span>{user.bio}</span>
-                    </Bio>
-                </ProfileInfo>
+                <TopSection>
+                    <AvatarContainer onClick={openStoryViewer}>
+                        <Avatar 
+                            src={
+                                (user.avatar && user.avatar !== 'default_avatar_url') 
+                                ? (user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`)
+                                : `${API_URL}/uploads/avatars/default.jpg`
+                            }
+                            alt={`${user.username}'s avatar`}
+                            hasStory={hasActiveStory}
+                        />
+                    </AvatarContainer>
+                    <ProfileInfo>
+                        <UsernameRow>
+                            <h2>{user.username}</h2>
+                            {isMyProfile ? (
+                                <ActionButton as={Link} to="/conta/editar">Editar Perfil</ActionButton>
+                            ) : (
+                                <>
+                                    <ActionButton onClick={handleFollow} className={!isFollowing ? 'primary' : ''}>
+                                        {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
+                                    </ActionButton>
+                                    <ChatButton onClick={handleStartChat}>
+                                        <BsChat size={16} />
+                                    </ChatButton>
+                                </>
+                            )}
+                        </UsernameRow>
+                        <DesktopOnly>
+                            <StatsRow>
+                                <p><strong>{postCount}</strong> publicações</p>
+                                <p className="clickable" onClick={openFollowersModal}>
+                                    <strong>{followerCount}</strong> seguidores
+                                </p>
+                                <p className="clickable" onClick={openFollowingModal}>
+                                    <strong>{followingCount}</strong> seguindo
+                                </p>
+                            </StatsRow>
+                            <BioAndProfessionContainer>
+                                <Bio>
+                                    <p>{user.username}</p>
+                                    <span>{user.bio}</span>
+                                </Bio>
+                                {user.profession && <Profession>{user.profession}</Profession>}
+                            </BioAndProfessionContainer>
+                        </DesktopOnly>
+                    </ProfileInfo>
+                </TopSection>
+
+                <MobileOnly>
+                    <BioAndProfessionContainer>
+                        <Bio>
+                            <p>{user.username}</p>
+                            <span>{user.bio}</span>
+                        </Bio>
+                        {user.profession && <Profession>{user.profession}</Profession>}
+                    </BioAndProfessionContainer>
+
+                <StatsRow>
+                    <p><strong>{postCount}</strong> publicações</p>
+                    <p className="clickable" onClick={openFollowersModal}>
+                        <strong>{followerCount}</strong> <span>seguidores</span>
+                    </p>
+                    <p className="clickable" onClick={openFollowingModal}>
+                        <strong>{followingCount}</strong> <span>seguindo</span>
+                    </p>
+                </StatsRow>
+                </MobileOnly>
             </ProfileHeader>
 
             <PostGrid>
                 {posts.map(post => (
                     <Link key={post._id} to={`/post/${post._id}`}>
                         <PostThumbnail>
-                            <img src={post.mediaUrl} />
+                            <img src={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${API_URL}${post.mediaUrl}`} alt={post.caption} />
                         </PostThumbnail>
                     </Link>
                 ))}
@@ -308,7 +410,9 @@ const ProfilePage = () => {
                                 } 
                                 alt={user.username} 
                             />
-                            <Link to={`/perfil/${user.username}`}>{user.username}</Link>
+                            <Link to={`/perfil/${user.username}`} onClick={() => setIsModalOpen(false)}>
+                                <strong>{user.username}</strong>
+                            </Link>
                         </UserListItem>
                     ))
                 ) : (
