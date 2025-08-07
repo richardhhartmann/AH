@@ -212,14 +212,15 @@ const SinglePostPage = () => {
     return (
         <PageContainer>
             <PostAndCommentsWrapper>
+                <PostHeader>
+                        <img src={post.user.avatar.startsWith('http') ? post.user.avatar : `${API_URL}${post.user.avatar}`} alt={post.user.username} />
+                        <Link to={`/perfil/${post.user.username}`}><strong>{post.user.username}</strong></Link>
+                    </PostHeader>
                 <ImageContainer>
                     <img src={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${API_URL}${post.mediaUrl}`} alt={post.caption} />
                 </ImageContainer>
                 <DetailsContainer>
-                    <PostHeader>
-                        <img src={post.user.avatar.startsWith('http') ? post.user.avatar : `${API_URL}${post.user.avatar}`} alt={post.user.username} />
-                        <Link to={`/perfil/${post.user.username}`}><strong>{post.user.username}</strong></Link>
-                    </PostHeader>
+                    
                     <CommentList>
                         {post.caption && (
                             <CommentItem>
@@ -247,7 +248,6 @@ const SinglePostPage = () => {
                         <ActionButton onClick={handleLike}>
                             {isLikedByMe ? <FaHeart color="red" /> : <FaRegHeart />}
                         </ActionButton>
-                        {/* Outros ícones como 'comentar' e 'salvar' podem vir aqui */}
                     </ActionsWrapper>
                     <LikesCounter>
                         {post.likes.length} curtidas

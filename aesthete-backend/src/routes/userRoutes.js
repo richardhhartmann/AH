@@ -12,7 +12,8 @@ const {
     searchUsers, 
     getFollowers, 
     getFollowing,
-    getUserSuggestions
+    getUserSuggestions,
+    getTopPosters
 } = require('../controllers/userController');
 
 
@@ -25,5 +26,6 @@ router.put('/profile', protect, upload.single('avatar'), updateUserProfile);
 router.put('/follow/:id', protect, followUser);
 router.get('/:id/followers', protect, getFollowers);
 router.get('/:id/following', protect, getFollowing);
+router.get('/top-posters', protect, getTopPosters);
 
 module.exports = router;

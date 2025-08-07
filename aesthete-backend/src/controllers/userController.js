@@ -221,3 +221,29 @@ exports.getUserSuggestions = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor ao buscar sugestões.' });
     }
 };
+
+// @desc    Buscar o ranking de usuários com mais posts
+// @route   GET /api/users/top-posters
+exports.getTopPosters = async (req, res) => {
+    try {
+        const topPosters = await Post.aggregate([
+            { $group: { _id: '$user', postCount: { $sum: 1 } } },
+            { $sort: { postCount: -1 } },
+            { $limit: 3 },
+            { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'userDetails' } },
+            { $project: { _id: 0, postCount: 1, user: { $arrayElemAt: ['$userDetails', 0] } } }
+        ]);
+        // Remove a senha e outros campos sensíveis do resultado
+        const sanitizedPosters = topPosters.map(item => {
+            if (item.user) {
+                delete item.user.password;
+                delete item.user.email;
+            }
+            return item;
+        });
+        res.json(sanitizedPosters);
+    } catch (error) {
+        console.error("Erro ao buscar top posters:", error);
+        res.status(500).json({ message: 'Erro no servidor' });
+    }
+};

@@ -69,7 +69,7 @@ const PostActions = styled.div`
 
 const PostFooter = styled.div`
   padding: 0 16px 16px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   
   p {
     margin-bottom: 4px;

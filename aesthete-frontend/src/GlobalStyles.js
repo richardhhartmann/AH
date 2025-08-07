@@ -1,6 +1,18 @@
 import { createGlobalStyle } from 'styled-components';
 
+// 1. IMPORTE SEU ARQUIVO DE FONTE LOCAL
+// O caminho deve ser relativo a este arquivo (GlobalStyles.js)
+import MeticulaRegular from './assets/fonts/Meticula-Regular.ttf';
+
 const GlobalStyles = createGlobalStyle`
+  /* 2. DECLARE A NOVA FAMÍLIA DE FONTES */
+  @font-face {
+    font-family: 'AestheteFont'; /* Nome que daremos à fonte no projeto */
+    src: url(${MeticulaRegular}) format('truetype'); /* Aponta para a fonte importada */
+    font-weight: normal;
+    font-style: normal;
+  }
+
   * {
     box-sizing: border-box;
     margin: 0;
@@ -8,7 +20,9 @@ const GlobalStyles = createGlobalStyle`
   }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    /* 3. APLIQUE A NOVA FONTE COMO PADRÃO */
+    /* Colocamos 'AestheteFont' como a primeira opção */
+    font-family: 'AestheteFont', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
       'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
       sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -23,14 +37,11 @@ const GlobalStyles = createGlobalStyle`
 
   main {
     max-width: 975px;
-    /* Padding padrão para desktop */
     padding: 30px 20px;
     margin: 0 auto;
 
-    /* --- AQUI ESTÁ A CORREÇÃO --- */
-    /* Em telas mobile, adicionamos um espaço extra no final da página */
     @media (max-width: 768px) {
-      padding-bottom: 100px; /* Altura do rodapé (60px) + espaço extra (40px) */
+      padding-bottom: 100px;
     }
   }
 `;

@@ -10,7 +10,6 @@ const StoriesContainer = styled.div`
   gap: 15px;
   padding: 16px;
   background-color: #fff;
-  border: 1px solid #dbdbdb;
   border-radius: 8px;
   margin-bottom: 24px;
   overflow-x: auto;

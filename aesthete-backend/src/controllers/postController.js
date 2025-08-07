@@ -189,3 +189,19 @@ exports.addCommentToPost = async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor' });
     }
 };
+
+// @desc    Obter o feed de "Explorar" com todos os posts
+// @route   GET /api/posts/explore
+exports.getExploreFeed = async (req, res) => {
+    try {
+        const posts = await Post.find({}) // Busca todos os posts, sem filtro
+            .populate('user', 'username avatar')
+            .sort({ createdAt: -1 })
+            .limit(50); // Limita para não sobrecarregar
+
+        res.json(posts);
+    } catch (error) {
+        console.error("Erro ao buscar o feed explorar:", error);
+        res.status(500).json({ message: 'Erro ao buscar o feed.' });
+    }
+};
