@@ -18,6 +18,29 @@ const ProfileWrapper = styled.div`
   }
 `;
 
+const MobileChatButton = styled.button`
+    // Escondido por padrão, aparecerá via lógica no JSX
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute; /* Chave para o posicionamento */
+    top: -15px;          /* Distância do topo do contêiner */
+    right: 5px;         /* Distância da direita do contêiner */
+    width: 48px;        /* Tamanho maior */
+    height: 48px;       /* Tamanho maior */
+    background-color: rgb(254, 121, 13);
+    color: white;
+    border-radius: 50%; /* Deixa o botão redondo */
+    border: none;
+    cursor: pointer;
+    z-index: 10;        /* Garante que fique sobre outros elementos */
+    transition: background-color 0.2s ease;
+
+    &:hover {
+        background-color: rgb(224, 101, 0); /* Cor um pouco mais escura no hover */
+    }
+`;
+
 const ProfileHeader = styled.header`
   display: flex;
   margin-bottom: 44px;
@@ -96,7 +119,39 @@ const ActionButton = styled.button`
         color: white;
         border: none;
     }
+
+    @media (max-width: 768px) {
+            display: none;
+        }    
 `;
+
+const ActionButtonMobile = styled.button`
+width: 100%;                  // ocupa toda a largura disponível
+  max-width: 500px;             // limite opcional para não estourar em telas grandes
+  margin: 0 auto;               // centraliza horizontalmente
+  display: block;              // necessário para centralizar com margin
+  padding: 12px 24px;
+  border: 1px solid #fe790d;
+  border-radius: 999px;         // super arredondado
+  background-color: #fff4ec;    // laranja claro
+  color: #fe790d;               // mesma cor da borda
+  font-size: 1rem;
+  text-align: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: #ffe3cc;  // cor um pouco mais escura no hover
+  }
+
+  &.primary {
+    background-color: #fe790d;
+    color: white;
+    border: none;
+  }
+`;
+
 
 const ChatButton = styled(ActionButton)`
     background-color: rgb(254, 121, 13);
@@ -105,9 +160,14 @@ const ChatButton = styled(ActionButton)`
     display: flex;
     align-items: center;
     justify-content: center;
+
+    @media (max-width: 768px) {
+            display: none;
+        }
 `;
 
 const BioAndProfessionContainer = styled.div`
+    position: relative; /* << ADICIONE ESTA LINHA */
     display: block;
     @media (max-width: 768px) {
         margin-top: 20px;
@@ -116,18 +176,22 @@ const BioAndProfessionContainer = styled.div`
 `;
 
 const Bio = styled.div`
-  p {
+  .username {
+    font-size: 1.4rem;
     font-weight: 600;
     margin-bottom: 5px;
   }
+
   span {
+    font-size: 0.9rem;
     line-height: 1.5;
   }
 `;
 
 const Profession = styled.p`
-  padding-top: 10px;
-  font-size: 1rem;
+padding-top: 5px;  
+padding-bottom: 3px;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #f58529;
 `;
@@ -167,6 +231,60 @@ const StatsRow = styled.div`
     &:hover { text-decoration: underline; }
   }
 `;
+
+const StatsRowMobile = styled.div`
+  display: flex;
+  margin-bottom: 20px;
+  align-items: center;
+
+  p {
+    margin-right: 40px;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+
+    strong {
+      color: rgb(254, 121, 13);
+      margin-right: 4px; /* <-- Espaço entre número e texto */
+      font-weight: 600;
+    }
+  }
+
+  @media (max-width: 768px) {
+    justify-content: flex-start;
+    width: 100%;
+    padding: 1px 0 0 0;
+    margin-top: 3px;
+    margin-bottom: 10px;
+    order: 1;
+
+    p {
+        margin-right: 12px;
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+
+        strong {
+            color: rgb(254, 121, 13);
+            margin-right: 4px;
+            font-weight: 600;
+        }
+
+        .label {
+            font-weight: normal;
+        }
+    }
+
+  }
+
+  p.clickable {
+    cursor: pointer;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+`;
+
 
 
 const PostGrid = styled.div`
@@ -333,20 +451,29 @@ const ProfilePage = () => {
                     </AvatarContainer>
                     <ProfileInfo>
                         <UsernameRow>
-                            <h2>{user.username}</h2>
-                            {isMyProfile ? (
-                                <ActionButton as={Link} to="/conta/editar">Editar Perfil</ActionButton>
-                            ) : (
-                                <>
-                                    <ActionButton onClick={handleFollow} className={!isFollowing ? 'primary' : ''}>
-                                        {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
-                                    </ActionButton>
-                                    <ChatButton onClick={handleStartChat}>
-                                        <BsChat size={16} />
-                                    </ChatButton>
-                                </>
-                            )}
+                            {/* Este h2 é visível em ambos */}
+                            
+                            {/* ======================================================= */}
+                            {/* <<< AQUI: Botões visíveis apenas em DESKTOP ( > 768px) */}
+                            {/* ======================================================= */}
+                            <DesktopOnly style={{ display: 'flex', gap: '10px' }}>
+                                {isMyProfile ? (
+                                    <ActionButton as={Link} to="/conta/editar">Editar Perfil</ActionButton>
+                                ) : (
+                                    <>
+                                        <ActionButton onClick={handleFollow} className={!isFollowing ? 'primary' : ''}>
+                                            {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
+                                        </ActionButton>
+                                        <ChatButton onClick={handleStartChat}>
+                                            <BsChat size={16} />
+                                        </ChatButton>
+                                    </>
+                                )}
+                            </DesktopOnly>
+
                         </UsernameRow>
+
+                        {/* Informações que também são só para Desktop */}
                         <DesktopOnly>
                             <StatsRow>
                                 <p><strong>{postCount}</strong> publicações</p>
@@ -360,9 +487,10 @@ const ProfilePage = () => {
                             <BioAndProfessionContainer>
                                 <Bio>
                                     <p>{user.username}</p>
+                                    {user.profession && <Profession>{user.profession}</Profession>}
                                     <span>{user.bio}</span>
                                 </Bio>
-                                {user.profession && <Profession>{user.profession}</Profession>}
+
                             </BioAndProfessionContainer>
                         </DesktopOnly>
                     </ProfileInfo>
@@ -370,22 +498,38 @@ const ProfilePage = () => {
 
                 <MobileOnly>
                     <BioAndProfessionContainer>
+                        {!isMyProfile && (
+                            <MobileChatButton onClick={handleStartChat}>
+                                <BsChat size={24} />
+                            </MobileChatButton>
+                        )}
                         <Bio>
-                            <p>{user.username}</p>
+                            <p className="username">{user.username}</p>
+                            {user.profession && <Profession>{user.profession}</Profession>}
+                                <StatsRowMobile>
+                                <p><strong>{postCount}</strong><span className="label">publicações</span></p>
+                                <p className="clickable" onClick={openFollowersModal}>
+                                    <strong>{followerCount}</strong><span className="label">seguidores</span>
+                                </p>
+                                <p className="clickable" onClick={openFollowingModal}>
+                                    <strong>{followingCount}</strong><span className="label">seguindo</span>
+                                </p>
+                                </StatsRowMobile>
+
                             <span>{user.bio}</span>
                         </Bio>
-                        {user.profession && <Profession>{user.profession}</Profession>}
                     </BioAndProfessionContainer>
+    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '16px' }}>
+                        {isMyProfile ? (
+                            <ActionButtonMobile as={Link} to="/conta/editar">Editar Perfil</ActionButtonMobile>
+                        ) : (
+                                <ActionButtonMobile onClick={handleFollow} className={!isFollowing ? 'primary' : ''}>
+                                    {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
+                                </ActionButtonMobile>
+                        )}
+                    </div>
 
-                <StatsRow>
-                    <p><strong>{postCount}</strong> publicações</p>
-                    <p className="clickable" onClick={openFollowersModal}>
-                        <strong>{followerCount}</strong> <span>seguidores</span>
-                    </p>
-                    <p className="clickable" onClick={openFollowingModal}>
-                        <strong>{followingCount}</strong> <span>seguindo</span>
-                    </p>
-                </StatsRow>
                 </MobileOnly>
             </ProfileHeader>
 
