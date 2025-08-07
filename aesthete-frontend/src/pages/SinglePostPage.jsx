@@ -56,18 +56,27 @@ const DetailsContainer = styled.div`
 `;
 
 const PostHeader = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: 14px 16px;
   border-bottom: 1px solid #dbdbdb;
-  display: flex;
-  align-items: center;
   flex-shrink: 0;
+
   img {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    margin-right: 14px;
+    margin: 0 auto 8px auto; /* centraliza e afasta da info abaixo */
+  }
+
+  a {
+    text-decoration: none;
+    color: #000;
+    font-weight: bold;
   }
 `;
+
 
 const CommentList = styled.ul`
   list-style: none;
@@ -158,7 +167,7 @@ const SinglePostPage = () => {
             try {
                 const { data } = await api.get(`/posts/${postId}`);
                 setPost(data);
-                setComments(data.comments);
+                setComments(data.comments || []);
             } catch (error) {
                 console.error("Erro ao buscar o post", error);
                 navigate('/');
@@ -212,10 +221,6 @@ const SinglePostPage = () => {
     return (
         <PageContainer>
             <PostAndCommentsWrapper>
-                <PostHeader>
-                        <img src={post.user.avatar.startsWith('http') ? post.user.avatar : `${API_URL}${post.user.avatar}`} alt={post.user.username} />
-                        <Link to={`/perfil/${post.user.username}`}><strong>{post.user.username}</strong></Link>
-                    </PostHeader>
                 <ImageContainer>
                     <img src={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${API_URL}${post.mediaUrl}`} alt={post.caption} />
                 </ImageContainer>
@@ -224,26 +229,39 @@ const SinglePostPage = () => {
                     <CommentList>
                         {post.caption && (
                             <CommentItem>
-                                <img src={post.user.avatar.startsWith('http') ? post.user.avatar : `${API_URL}${post.user.avatar}`} alt={post.user.username} />
+                                {post.user && (
+                                  <img
+                                    src={post.user?.avatar?.startsWith('http') ? post.user.avatar : `${API_URL}${post.user?.avatar || '/default-avatar.png'}`}
+                                    alt={post.user?.username || 'Usuário'} 
+                                  />
+                                )}
                                 <p>
-                                    <Link to={`/perfil/${post.user.username}`}><strong>{post.user.username}</strong></Link>
+                                    <Link to={`/perfil/${post.user?.username || ''}`}>
+                                      <strong>{post.user?.username || 'Usuário'}</strong>
+                                    </Link>
                                     {' '}{post.caption}
                                 </p>
                             </CommentItem>
                         )}
                         
                         {comments.map((comment) => (
-                            <CommentItem key={comment._id}>
-                                <img src={comment.user.avatar.startsWith('http') ? comment.user.avatar : `${API_URL}${comment.user.avatar}`} alt={comment.user.username} />
-                                <p>
-                                    <Link to={`/perfil/${comment.user.username}`}><strong>{comment.user.username}</strong></Link>
-                                    {' '}{comment.text}
-                                </p>
-                            </CommentItem>
-                        ))}
+                          comment && ( 
+                              <CommentItem key={comment._id}>
+                                  <img 
+                                      src={comment.author?.avatar?.startsWith('http') ? comment.author.avatar : `${API_URL}${comment.author.avatar}`} 
+                                      alt={comment.author?.username || 'Usuário desconhecido'} 
+                                  />
+                                  <p>
+                                      <Link to={`/perfil/${comment.author?.username}`}>
+                                          <strong>{comment.author?.username || 'Usuário desconhecido'}</strong>
+                                      </Link>
+                                      {' '}{comment.text}
+                                  </p>
+                              </CommentItem>
+                          )
+                      ))}
                     </CommentList>
 
-                    {/* --- SEÇÃO DE AÇÕES E CURTIDAS ADICIONADA AQUI --- */}
                     <ActionsWrapper>
                         <ActionButton onClick={handleLike}>
                             {isLikedByMe ? <FaHeart color="red" /> : <FaRegHeart />}

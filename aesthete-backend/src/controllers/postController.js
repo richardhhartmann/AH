@@ -1,6 +1,9 @@
+// postController.js
+
 const Post = require('../models/Post');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const Comment = require('../models/Comment');
 const fs = require('fs');
 const path = require('path');
 
@@ -92,23 +95,19 @@ exports.likePost = async (req, res) => {
 
 exports.getPostById = async (req, res) => {
     try {
-        // A mágica acontece aqui, no '.populate()'
-        // Pedimos para o Mongoose buscar o post e, para cada comentário,
-        // ir na coleção 'users' e pegar o 'username' e 'avatar' do autor.
         const post = await Post.findById(req.params.id)
-            .populate('user', 'username avatar') // Popula o autor do POST
-            .populate('comments.user', 'username avatar'); // Popula o autor de CADA COMENTÁRIO
+            .populate('user', 'username avatar'); // Popula o autor do post
 
         if (!post) {
             return res.status(404).json({ message: 'Post não encontrado' });
         }
 
-        res.json(post);
+        // Buscar os comentários de forma separada, já populando os autores
+        const comments = await Comment.find({ post: post._id }).populate('author', 'username avatar');
+
+        res.json({ ...post.toObject(), comments }); // Retorna os comentários como array separado
     } catch (error) {
         console.error(error);
-        if (error.kind === 'ObjectId') {
-            return res.status(404).json({ message: 'Post não encontrado' });
-        }
         res.status(500).json({ message: 'Erro no servidor' });
     }
 };
@@ -151,42 +150,42 @@ exports.deletePost = async (req, res) => {
 // @route   POST /api/posts/:id/comment
 exports.addCommentToPost = async (req, res) => {
     try {
-        // req.user.id vem do middleware 'protect'
-        const user = req.user;
         const { text } = req.body;
+        const postId = req.params.id;
+        const authorId = req.user.id;
 
-        if (!text) {
-            return res.status(400).json({ message: 'O texto do comentário não pode estar vazio.' });
-        }
-
-        const post = await Post.findById(req.params.id);
+        const post = await Post.findById(postId).populate('user');
 
         if (!post) {
-            return res.status(404).json({ message: 'Post não encontrado' });
+            return res.status(404).json({ message: 'Post não encontrado.' });
         }
 
-        const newComment = {
+        // Cria o novo comentário
+        const newComment = new Comment({
             text: text,
-            user: user.id,
-            // O Mongoose usará o 'ref' para popular o username e avatar depois
-        };
+            author: authorId,
+            post: postId
+        });
+        await newComment.save();
 
-        post.comments.push(newComment);
+        // Cria a notificação (se não for o dono do post)
+        if (post.user._id.toString() !== authorId.toString()) {
+            await Notification.create({
+                sender: authorId,
+                recipient: post.user._id,
+                type: 'comment',
+                post: postId
+            });
+        }
 
-        await post.save();
+        // Popula o comentário recém-criado com os dados do autor
+        const populatedComment = await Comment.findById(newComment._id).populate('author', 'username avatar');
 
-        // Para retornar o comentário com os dados do usuário populados
-        const populatedPost = await Post.findById(post._id)
-                                         .populate('comments.user', 'username avatar');
-
-        // Retorna apenas o último comentário adicionado (que já vem com os dados do usuário)
-        const addedComment = populatedPost.comments[populatedPost.comments.length - 1];
-
-        res.status(201).json(addedComment);
+        res.status(201).json(populatedComment);
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Erro no servidor' });
+        console.error("Erro ao adicionar comentário:", error);
+        res.status(500).json({ message: "Erro interno do servidor" });
     }
 };
 
@@ -205,3 +204,4 @@ exports.getExploreFeed = async (req, res) => {
         res.status(500).json({ message: 'Erro ao buscar o feed.' });
     }
 };
+

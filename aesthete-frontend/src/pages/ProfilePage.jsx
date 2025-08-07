@@ -110,7 +110,6 @@ const ChatButton = styled(ActionButton)`
 
 const BioAndProfessionContainer = styled.div`
     display: block;
-    
     @media (max-width: 768px) {
         margin-top: 20px;
         padding: 0 5px;
@@ -128,6 +127,7 @@ const Bio = styled.div`
 `;
 
 const Profession = styled.p`
+  padding-top: 10px;
   font-size: 1rem;
   font-weight: 600;
   color: #f58529;
@@ -152,7 +152,7 @@ const StatsRow = styled.div`
     
     margin-top: 24px;
     margin-bottom: 0;
-    order: 1; /* Faz as estatísticas aparecerem antes da bio no mobile */
+    order: 1;
 
     p {
         margin: 0;
@@ -254,7 +254,9 @@ const ProfilePage = () => {
         if (!profileData) return;
         try {
             const { data } = await api.post('/chats', { userId: profileData.user._id });
-            navigate('/chat', { state: { chatId: data._id } });
+            
+            navigate(`/chat/${data._id}`); 
+            
         } catch (error) {
             console.error("Erro ao iniciar chat", error);
         }

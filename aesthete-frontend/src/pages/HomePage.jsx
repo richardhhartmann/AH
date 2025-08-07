@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import api from '../api/axios';
-
-// Componentes
 import Post from '../components/Post';
 import StoriesBar from '../components/StoriesBar';
 import FullscreenStoryViewer from '../components/FullscreenStoryViewer';
-import TopPosters from '../components/TopPosters'; // Importa o novo componente de ranking
+import TopPosters from '../components/TopPosters';
 
-// --- Styled Components ---
+// Componentes importados continuam iguais
+
 const HomeContainer = styled.div`
   display: flex;
   justify-content: center;
@@ -21,6 +21,41 @@ const FeedColumn = styled.div`
   max-width: 615px;
 `;
 
+const FeedSelector = styled.div`
+  position: relative;
+  display: flex;
+  justify-content: center;
+  border-bottom: 1px solid #dbdbdb;
+  margin-bottom: 24px;
+  gap: 6px;
+  width: 100%;
+`;
+
+const FeedTab = styled.button.attrs(() => ({ type: 'button' }))`
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 10px 0;
+  color: ${props => (props.isActive ? '#262626' : '#8e8e8e')};
+  position: relative;
+  display: inline-block;
+  min-width: 70px;
+  text-align: center;
+`;
+
+const Underline = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: ${props => props.left}px;
+  width: ${props => props.width}px;
+  height: 4px; /* Barra mais grossa */
+  background-color: rgb(254, 121, 13);
+  border-radius: 2px;
+  transition: left 0.3s ease, width 0.3s ease;
+`;
+
 const WelcomeMessage = styled.div`
   text-align: center;
   padding: 50px;
@@ -29,119 +64,135 @@ const WelcomeMessage = styled.div`
   border-radius: 8px;
 `;
 
-const FeedSelector = styled.div`
-  display: flex;
-  gap: 16px; /* ou menos, tipo 8px */
-  border-bottom: 1px solid #dbdbdb;
-  margin-bottom: 24px;
-  justify-content: center;
-`;
-
-const TabText = styled.span`
-  border-bottom: ${props => props.isActive ? '3px solid rgb(254, 121, 13)' : '2px solid transparent'};
-  border-radius: 1px;
-  padding-bottom: 4px;
-  transition: border-bottom 0.2s ease-in-out;
-`;
-
-const FeedTab = styled.button`
-  padding: 10px 16px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  color: ${props => props.isActive ? '#262626' : '#8e8e8e'};
-  transition: all 0.2s ease-in-out;
-  display: flex;
-  justify-content: center;
-`;
-
-
-// --- Componente ---
+// --- Componente principal ---
 const HomePage = () => {
+  const navigate = useNavigate();
   const { user: loggedInUser } = useSelector((state) => state.auth);
-  
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewingUserStories, setViewingUserStories] = useState(null);
-  const [feedType, setFeedType] = useState('following'); // 'following' ou 'explore'
+  const [feedType, setFeedType] = useState('following');
+
+  // Refs para pegar posições dos botões para animar underline
+  const followingRef = useRef(null);
+  const exploreRef = useRef(null);
+
+  // Estado para barra animada
+  const [underlineProps, setUnderlineProps] = useState({ left: 0, width: 0 });
 
   useEffect(() => {
-    const fetchFeed = async () => {
-      if (!loggedInUser) return;
+    if (!loggedInUser) {
+      navigate('/login');
+    }
+  }, [loggedInUser, navigate]);
 
-      setLoading(true);
-      try {
-        // Define qual API chamar com base no estado 'feedType'
-        const endpoint = feedType === 'following' ? '/posts/feed' : '/posts/explore';
-        const { data } = await api.get(endpoint);
-        setPosts(data);
-      } catch (error) {
-        console.error(`Falha ao buscar o feed ${feedType}`, error);
-        setPosts([]); // Limpa os posts em caso de erro
-      } finally {
-        setLoading(false);
+  const [feedsCache, setFeedsCache] = useState({ following: [], explore: [] });
+
+  useEffect(() => {
+    if (loggedInUser) {
+      const fetchBothFeeds = async () => {
+        try {
+          const [followingRes, exploreRes] = await Promise.all([
+            api.get('/posts/feed'),
+            api.get('/posts/explore'),
+          ]);
+          setFeedsCache({
+            following: followingRes.data,
+            explore: exploreRes.data,
+          });
+          setPosts(feedType === 'following' ? followingRes.data : exploreRes.data);
+        } catch (error) {
+          console.error('Erro ao buscar feeds', error);
+          setFeedsCache({ following: [], explore: [] });
+          setPosts([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchBothFeeds();
+    }
+  }, [loggedInUser]);
+
+  useEffect(() => {
+    // Atualiza posts quando feedType muda usando cache
+    setPosts(feedsCache[feedType] || []);
+  }, [feedType, feedsCache]);
+
+  useLayoutEffect(() => {
+    const updateUnderline = () => {
+      const ref = feedType === 'following' ? followingRef.current : exploreRef.current;
+      if (ref) {
+        const rect = ref.getBoundingClientRect();
+        const parentRect = ref.parentElement.getBoundingClientRect();
+
+        setUnderlineProps({
+          left: rect.left - parentRect.left,
+          width: rect.width,
+        });
       }
     };
 
-    fetchFeed();
-  }, [loggedInUser, feedType]); // Roda o efeito sempre que o feedType mudar
+    updateUnderline();
 
-  if (!loggedInUser) {
-    return (
-        <WelcomeMessage>
-            <h2>Bem-vindo à Aesthete!</h2>
-            <p>Faça login para ver o feed ou cadastre-se para começar.</p>
-        </WelcomeMessage>
-    );
+    window.addEventListener('resize', updateUnderline);
+    return () => window.removeEventListener('resize', updateUnderline);
+  }, [feedType]);
+
+  if (loading || !loggedInUser) {
+    return <p style={{ textAlign: 'center', marginTop: '50px' }}>Carregando...</p>;
   }
 
+  const handleClick = (e, newFeedType) => {
+    e.preventDefault();
+    setFeedType(newFeedType);
+  };
+
   return (
-        <HomeContainer>
-            <FeedColumn>
-                <TopPosters />
-                <StoriesBar onStoryClick={(userStories) => setViewingUserStories(userStories)} />
-                
-                
-                
-                <FeedSelector>
-                  <FeedTab isActive={feedType === 'following'} onClick={() => setFeedType('following')}>
-                    <TabText isActive={feedType === 'following'}>Seguindo</TabText>
-                  </FeedTab>
-                  <FeedTab isActive={feedType === 'explore'} onClick={() => setFeedType('explore')}>
-                    <TabText isActive={feedType === 'explore'}>Explorar</TabText>
-                  </FeedTab>
-                </FeedSelector>
-                
-                {loading ? (
-                    <p style={{ textAlign: 'center', marginTop: '40px' }}>Carregando...</p>
-                ) : (
-                    posts.length > 0 ? (
-                        posts.map((post) => <Post key={post._id} post={post} />)
-                    ) : (
-                        <WelcomeMessage>
-                            <h2>
-                                {feedType === 'following' 
-                                    ? 'Seu feed está vazio' 
-                                    : 'Nada para explorar'}
-                            </h2>
-                            <p>
-                                {feedType === 'following' 
-                                    ? 'Siga outros usuários para ver as publicações deles aqui.' 
-                                    : 'Ainda não há publicações na plataforma.'}
-                            </p>
-                        </WelcomeMessage>
-                    )
-                )}
-            </FeedColumn>
-            
-            {viewingUserStories && (
-                <FullscreenStoryViewer 
-                    userStories={viewingUserStories} 
-                    onClose={() => setViewingUserStories(null)} 
-                />
-            )}
-        </HomeContainer>
+    <HomeContainer>
+      <FeedColumn>
+        <TopPosters />
+        <StoriesBar onStoryClick={(userStories) => setViewingUserStories(userStories)} />
+
+        <FeedSelector>
+          <FeedTab
+            ref={followingRef}
+            isActive={feedType === 'following'}
+            onClick={(e) => handleClick(e, 'following')}
+          >
+            Seguindo
+          </FeedTab>
+          <FeedTab
+            ref={exploreRef}
+            isActive={feedType === 'explore'}
+            onClick={(e) => handleClick(e, 'explore')}
+          >
+            Explorar
+          </FeedTab>
+
+          <Underline left={underlineProps.left} width={underlineProps.width} />
+        </FeedSelector>
+
+        {posts.length > 0 ? (
+          posts.map((post) => <Post key={post._id} post={post} />)
+        ) : (
+          <WelcomeMessage>
+            <h2>{feedType === 'following' ? 'Seu feed está vazio' : 'Nada para explorar'}</h2>
+            <p>
+              {feedType === 'following'
+                ? 'Siga outros usuários para ver as publicações deles aqui.'
+                : 'Ainda não há publicações na plataforma.'}
+            </p>
+          </WelcomeMessage>
+        )}
+      </FeedColumn>
+
+      {viewingUserStories && (
+        <FullscreenStoryViewer
+          userStories={viewingUserStories}
+          onClose={() => setViewingUserStories(null)}
+        />
+      )}
+    </HomeContainer>
   );
 };
 

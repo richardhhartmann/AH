@@ -1,4 +1,4 @@
-// Caminho: src/routes/postRoutes.js (VERSÃO FINAL)
+// Caminho: src/routes/postRoutes.js 
 
 const express = require('express');
 const router = express.Router();

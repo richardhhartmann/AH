@@ -38,55 +38,58 @@ exports.getUserProfile = async (req, res) => {
 // @desc    Seguir / Deixar de seguir um usuário
 // @route   PUT /api/users/follow/:id
 exports.followUser = async (req, res) => {
-    try {
-        const userToFollow = await User.findById(req.params.id);
-        const currentUser = await User.findById(req.user.id);
+    // O ID do usuário a ser seguido (vem da URL, ex: /api/users/SEGUIDO_ID/follow)
+    const userIdToFollow = req.params.id;
+    // O ID do usuário que está fazendo a ação (vem do middleware de autenticação)
+    const followerId = req.user.id;
 
-        if (!userToFollow || !currentUser) {
-            return res.status(404).json({ message: 'Usuário não encontrado' });
-        }
-        
-        if (req.params.id === req.user.id) {
-            return res.status(400).json({ message: 'Você não pode seguir a si mesmo' });
-        }
-
-        // Se já está seguindo, vai deixar de seguir
-        if (currentUser.following.includes(req.params.id)) {
-            currentUser.following = currentUser.following.filter(id => id.toString() !== req.params.id);
-            userToFollow.followers = userToFollow.followers.filter(id => id.toString() !== req.user.id);
-        } else { // Se não, vai seguir
-            currentUser.following.push(req.params.id);
-            userToFollow.followers.push(req.user.id);
-        }
-
-        await currentUser.save();
-        await userToFollow.save();
-
-        res.json({ message: 'Operação realizada com sucesso' });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Erro no servidor' });
+    // Impede que um usuário siga a si mesmo
+    if (userIdToFollow === followerId) {
+        return res.status(400).json({ message: "Você não pode seguir a si mesmo." });
     }
 
-    if (!currentUser.following.includes(req.params.id)) {
-    currentUser.following.push(req.params.id);
-    userToFollow.followers.push(req.user.id);
-    
-    // Cria a notificação
-    const notification = new Notification({
-        recipient: userToFollow._id,
-        sender: req.user.id,
-        type: 'follow'
-    });
-    await notification.save();
+    try {
+        // Busca os dois usuários no banco de dados
+        const userToFollow = await User.findById(userIdToFollow);
+        const follower = await User.findById(followerId);
 
-    const populatedNotification = await Notification.findById(notification._id)
-        .populate('sender', 'username avatar');
+        if (!userToFollow || !follower) {
+            return res.status(404).json({ message: "Usuário não encontrado." });
+        }
 
-    req.io.to(userToFollow._id.toString()).emit('newNotification', populatedNotification);
-    
-}
+        // Verifica se o usuário já está sendo seguido
+        const isAlreadyFollowing = follower.following.includes(userIdToFollow);
+
+        if (isAlreadyFollowing) {
+            // DEIXAR DE SEGUIR (UNFOLLOW)
+            // Remove o ID da lista 'following' do seguidor
+            await User.findByIdAndUpdate(followerId, { $pull: { following: userIdToFollow } });
+            // Remove o ID da lista 'followers' de quem estava sendo seguido
+            await User.findByIdAndUpdate(userIdToFollow, { $pull: { followers: followerId } });
+
+            res.status(200).json({ message: "Deixou de seguir o usuário." });
+
+        } else {
+            // SEGUIR (FOLLOW)
+            // Adiciona o ID à lista 'following' do seguidor
+            await User.findByIdAndUpdate(followerId, { $addToSet: { following: userIdToFollow } });
+            // Adiciona o ID à lista 'followers' de quem está sendo seguido
+            await User.findByIdAndUpdate(userIdToFollow, { $addToSet: { followers: followerId } });
+
+            // Criar a notificação
+            await Notification.create({
+                sender: followerId,
+                recipient: userIdToFollow, // <-- CORREÇÃO AQUI: use 'recipient' ao invés de 'receiver'
+                type: 'follow'
+            });
+
+            res.status(200).json({ message: "Usuário seguido com sucesso." });
+        }
+
+    } catch (error) {
+        console.error("Erro no processo de seguir/deixar de seguir:", error);
+        res.status(500).json({ message: "Erro interno do servidor." });
+    }
 };
 
 // @desc    Atualizar o perfil do usuário

@@ -18,6 +18,7 @@ import EditProfilePage from './pages/EditProfilePage';
 import ChatPage from './pages/ChatPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import NotificationPage from './pages/NotificationPage';
 
 function App() {
   const { user: loggedInUser } = useSelector((state) => state.auth);
@@ -32,6 +33,8 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/registrar" element={<RegisterPage />} />
           <Route path="/chat" element={<ChatPage />} />
+          <Route path="/chat/:chatId" element={<ChatPage />} />
+          <Route path="/notificacoes" element={<NotificationPage />} />
           
           <Route path="/criar" element={<CreatePage />} />
           <Route path="/novo-post" element={<NewPostPage />} />
@@ -45,7 +48,6 @@ function App() {
           <Route path="/redefinir-senha/:resettoken" element={<ResetPasswordPage />} />
         </Routes>
       </main>
-      {/* Renderiza o MobileFooter apenas se houver um usuário logado */}
       {loggedInUser && <MobileFooter />}
     </Router>
   );

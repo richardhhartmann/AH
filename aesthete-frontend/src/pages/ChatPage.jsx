@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import io from 'socket.io-client';
@@ -111,6 +111,9 @@ const ChatWindow = styled.div`
   width: 65%;
   display: flex;
   flex-direction: column;
+  height: 100%; /* Garante que o componente ocupe toda a altura do container pai */
+  min-height: 0; /* Hack de flexbox para garantir que o filho com overflow funcione corretamente */
+
   @media (max-width: 768px) {
     width: 100%;
     display: ${props => props.chatSelected ? 'flex' : 'none'};
@@ -124,6 +127,14 @@ const ChatWindowHeader = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
+
+  /* MODIFICAÇÃO PARA MOBILE */
+  @media (max-width: 768px) {
+    position: sticky;
+    top: 0; /* Colado no topo da área de rolagem */
+    background-color: #fff; /* Fundo para não ficar transparente */
+    z-index: 2; /* Garante que fique sobre a lista de mensagens */
+  }
 `;
 
 const BackButton = styled.button`
@@ -139,19 +150,17 @@ const BackButton = styled.button`
 `;
 
 const HeaderAvatar = styled.img`
-  display: none; // Escondido no desktop
-  @media (max-width: 768px) {
-    display: block;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-  }
+  /* MODIFICAÇÃO: AGORA APARECE EM TODAS AS TELAS */
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
 `;
 
 const MessageList = styled.div`
-  flex-grow: 1;
+  flex: 1; /* Faz o componente ocupar todo o espaço vertical disponível */
   padding: 20px;
-  overflow-y: auto;
+  overflow-y: auto; /* Adiciona a barra de rolagem APENAS a este componente */
   display: flex;
   flex-direction: column;
 `;
@@ -201,10 +210,10 @@ const SendButton = styled(MicButton)``;
 
 const Placeholder = styled.div`
     display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    width: 65%;
+    justify-content: center;   // horizontal
+    align-items: center;       // vertical
+    height: 100vh;             // altura da tela inteira
+    width: 100%;               // largura total
     color: #8e8e8e;
     @media (max-width: 768px) {
         display: none;
@@ -219,6 +228,7 @@ let typingTimeout;
 const ChatPage = () => {
     const dispatch = useDispatch();
     const location = useLocation();
+    const { chatId } = useParams();
 
     const { user: loggedInUser } = useSelector((state) => state.auth);
     const { chats } = useSelector((state) => state.chat);
@@ -286,13 +296,16 @@ const ChatPage = () => {
     }, [loggedInUser, dispatch]);
 
     useEffect(() => {
-        if (location.state?.chatId && chats.length > 0) {
-            const chatToSelect = chats.find(c => c._id === location.state.chatId);
+        // Prioriza o ID da URL. Se não houver, tenta o do state.
+        const idToSelect = chatId || location.state?.chatId;
+
+        if (idToSelect && chats.length > 0) {
+            const chatToSelect = chats.find(c => c._id === idToSelect);
             if (chatToSelect) {
                 handleSelectChat(chatToSelect);
             }
         }
-    }, [chats, location.state, handleSelectChat]);
+    }, [chats, location.state, chatId, handleSelectChat]);
     
     useEffect(() => {
         if (!selectedChat || !socket) return;
@@ -472,9 +485,10 @@ const ChatPage = () => {
                             <BackButton onClick={() => setSelectedChat(null)}>
                                 <IoArrowBack />
                             </BackButton>
-                            <HeaderAvatar src={getOtherUser(selectedChat).avatar?.startsWith('http') ? getOtherUser(selectedChat).avatar : `${API_URL}${getOtherUser(selectedChat).avatar}`} />
-                            <Link to={`/perfil/${getOtherUser(selectedChat).username}`}>
-                                {getOtherUser(selectedChat).username}
+                            {/* MODIFICAÇÃO: O Link agora envolve o avatar e o nome */}
+                            <Link to={`/perfil/${getOtherUser(selectedChat).username}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'inherit' }}>
+                                <HeaderAvatar src={getOtherUser(selectedChat).avatar?.startsWith('http') ? getOtherUser(selectedChat).avatar : `${API_URL}${getOtherUser(selectedChat).avatar}`} />
+                                <span>{getOtherUser(selectedChat).username}</span>
                             </Link>
                         </ChatWindowHeader>
                         <MessageList>

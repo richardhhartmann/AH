@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { css, keyframes } from 'styled-components';
 import { useSelector } from 'react-redux';
 import api, { API_URL } from '../api/axios'; // Mantenha a importação da API_URL
 import { FaTrash } from 'react-icons/fa';
@@ -18,11 +18,36 @@ const FullscreenOverlay = styled.div`
   z-index: 1000;
 `;
 
+const UserInfo = styled.div`
+  position: absolute;
+  top: 20px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1010;
+`;
+
+const UserAvatar = styled.img`
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid white;
+`;
+
+const UserName = styled.span`
+  color: white;
+  font-weight: 200;
+  font-size: 1rem;
+`;
+
 const StoryContentWrapper = styled.div`
   position: relative;
   max-width: 450px;
   width: 100%;
   aspect-ratio: 9 / 16;
+  max-height: 100vh;
   background-color: #111;
   border-radius: 8px;
   overflow: hidden;
@@ -63,9 +88,16 @@ const ProgressBarContainer = styled.div`
   left: 10px;
   right: 10px;
   height: 3px;
+  z-index: 1006;
+  display: flex;
+  gap: 4px;
+`;
+
+const ProgressSegment = styled.div`
+  flex: 1;
   background-color: rgba(255, 255, 255, 0.3);
   border-radius: 3px;
-  z-index: 1006;
+  overflow: hidden;
 `;
 
 const progressBarAnimation = keyframes`
@@ -73,11 +105,15 @@ const progressBarAnimation = keyframes`
   to { width: 100%; }
 `;
 
-const ProgressBar = styled.div`
+const ProgressFiller = styled.div` 
   height: 100%;
   background-color: white;
   border-radius: 3px;
-  animation: ${progressBarAnimation} 5s linear forwards;
+  width: ${props => props.isViewed ? '100%' : '0%'};
+  
+  ${props => props.isActive && css`
+    animation: ${progressBarAnimation} 5s linear forwards;
+  `}
 `;
 
 const DeleteButton = styled.button`
@@ -166,21 +202,41 @@ const FullscreenStoryViewer = ({ userStories, onClose }) => {
         <FullscreenOverlay onClick={onClose}>
             <CloseButton onClick={(e) => {e.stopPropagation(); onClose()}}>&times;</CloseButton>
             <StoryContentWrapper onClick={(e) => e.stopPropagation()}>
-                <ProgressBarContainer>
-                    <ProgressBar key={currentIndex} />
-                </ProgressBarContainer>
+              <ProgressBarContainer>
+                {userStories.stories.map((story, index) => (
+                  <ProgressSegment key={story._id}>
+                    <ProgressFiller
+                      isActive={index === currentIndex}
+                      isViewed={index < currentIndex}
+                      key={currentIndex}
+                    />
+                  </ProgressSegment>
+                ))}
+              </ProgressBarContainer>
 
-                <NavArea className="prev" onClick={handlePrev} />
-                <NavArea className="next" onClick={handleNextClick} />
-                
-                {/* CORREÇÃO AQUI: Usando a função getImageUrl para o story */}
-                <StoryImage src={getImageUrl(currentStory.mediaUrl)} alt="Story" />
-                
-                {isMyStory && (
-                    <DeleteButton onClick={handleDelete}>
-                        <FaTrash />
-                    </DeleteButton>
-                )}
+              {/* Foto e nome do usuário logo abaixo da barra */}
+              <UserInfo>
+                <UserAvatar 
+                  src={
+                    userStories.userAvatar && userStories.userAvatar.startsWith('http') 
+                    ? userStories.userAvatar 
+                    : `${API_URL}${userStories.userAvatar}`
+                  } 
+                  alt="User avatar" 
+                />
+                <UserName>{userStories.username}</UserName>
+              </UserInfo>
+
+              <NavArea className="prev" onClick={handlePrev} />
+              <NavArea className="next" onClick={handleNextClick} />
+
+              <StoryImage src={getImageUrl(currentStory.mediaUrl)} alt="Story" />
+
+              {isMyStory && (
+                <DeleteButton onClick={handleDelete}>
+                  <FaTrash />
+                </DeleteButton>
+              )}
             </StoryContentWrapper>
         </FullscreenOverlay>
     );

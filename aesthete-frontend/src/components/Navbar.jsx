@@ -8,22 +8,61 @@ import api, { API_URL } from '../api/axios';
 import io from 'socket.io-client';
 
 // Ícones
-import logoImage from '../assets/images/logo.jpg';
-import { IoAddCircleOutline, IoAddCircle, IoSearch, IoArrowBack } from "react-icons/io5";
+import logoImage from '../assets/images/logo.png';
+import bannerImage from '../assets/images/banner.png';
+import { IoAddCircleOutline, IoAddCircle, IoArrowBack } from "react-icons/io5";
 import { CgProfile } from "react-icons/cg";
-import { FiLogOut, FiSend } from "react-icons/fi";
-import { GoHome, GoHomeFill } from "react-icons/go";
-import { RiSendPlaneFill } from "react-icons/ri";
+import { FiLogOut } from "react-icons/fi";
 import { FaRegBell } from "react-icons/fa";
+import { BiWorld } from "react-icons/bi";
+import { PiChats } from "react-icons/pi";
 
 // --- Styled Components ---
 
-const NavWrapper = styled.nav`
+// ==================================================================
+// ALTERAÇÃO 1: O cabeçalho agora é escondido em telas menores
+// ==================================================================
+const DesktopHeader = styled.nav`
   background-color: rgb(255, 240, 233);
   border-bottom: 1px solid #dbdbdb;
   position: sticky;
   top: 0;
   z-index: 10;
+  
+  // Esconde o cabeçalho inteiro em telas mobile
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const NotificationsDropdown = styled.div`
+  position: absolute;
+  top: 100%;
+  right: 100px;
+  width: 380px;
+  background-color: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 20;
+  max-height: 400px;
+  overflow-y: auto;
+`;
+
+const MobileNotificationsDropdown = styled(NotificationsDropdown)`
+  /* Ajustes para o dropdown abrir para cima a partir do rodapé */
+  bottom: 70px; /* Posição acima do rodapé de 60px + 10px de margem */
+  top: auto;    /* Remove a propriedade 'top' herdada */
+  
+  /* Centraliza o dropdown em relação ao ícone */
+  left: 50%;
+  transform: translateX(-50%);
+  right: auto; /* Remove a propriedade 'right' herdada */
+
+  /* Fix para garantir que o dropdown não fique muito largo em telas pequenas */
+  @media (max-width: 400px) {
+    width: 90vw;
+  }
 `;
 
 const NavContainer = styled.div`
@@ -39,6 +78,25 @@ const NavContainer = styled.div`
 const Logo = styled(Link)`
   img {
     height: 35px;
+    vertical-align: middle;
+  }
+`;
+
+const BannerWrapper = styled.div`
+  display: flex;
+  justify-content: center;   // Alinha no eixo horizontal
+  align-items: center;       // Alinha no eixo vertical
+  height: 100vh;             // Ocupa altura total da tela
+  text-align: center;
+
+`;
+
+const Banner = styled(Link)`
+  margin-left: 25vw;
+  display: flex;
+  justify-content: center;
+  img {
+    height: 45px;
     vertical-align: middle;
   }
 `;
@@ -61,39 +119,60 @@ const LogoutButton = styled.button`
   border: none;
   cursor: pointer;
   padding: 0;
-  @media (max-width: 768px) {
-    display: none; // Esconde o botão de logout no mobile (geralmente fica em um menu)
-  }
-`;
-
-const DesktopNavLinks = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 22px;
-
-  @media (max-width: 768px) {
-    display: none; // Esconde os ícones de navegação principais no mobile
-  }
 `;
 
 const SearchWrapper = styled.div`
   position: relative;
   width: 250px;
+`;
+
+// ==================================================================
+// ADIÇÃO 1: Componentes para o Rodapé Mobile
+// ==================================================================
+const MobileFooter = styled.footer`
+  display: none; // Escondido por padrão
+  
+  // Aparece apenas em telas mobile
   @media (max-width: 768px) {
-    display: none;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background-color: rgb(255, 240, 233);
+    border-top: 1px solid #dbdbdb;
+    z-index: 10;
+  }
+
+  a {
+    color: #262626;
+    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    position: relative;
+    flex: 1;
+    justify-content: center;
+    height: 100%;
   }
 `;
 
-const MobileSearchButton = styled.button`
-  display: none;
-  @media (max-width: 768px) {
-    display: flex;
-    font-size: 1.6rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #262626;
-  }
+const TopMobileHeader = styled.div`
+    display: none;
+    @media (max-width: 768px) {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 20px;
+        height: 60px;
+        background-color: rgb(255, 240, 233);
+        border-bottom: 1px solid #dbdbdb;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
 `;
 
 const MobileSearchOverlay = styled.div`
@@ -169,16 +248,32 @@ const RecentSearchHeader = styled.div`
   }
 `;
 
-const NavIconWrapper = styled.div`
+const NavIconWrapper = styled.span`
   position: relative;
-  cursor: pointer;
+  background-color: ${({ isSelected, disableEffect }) =>
+    disableEffect ? 'transparent' :
+    isSelected ? 'rgb(254, 121, 13)' : 'transparent'}; // Fundo transparente por padrão
+  border-radius: 50%;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease, color 0.3s ease;
+
+  svg {
+    color: ${({ isSelected, disableEffect }) =>
+      disableEffect ? 'black' :
+      isSelected ? 'white' : 'black'};
+    transition: color 0.3s ease;
+    font-size: 24px;
+  }
 `;
 
 const NotificationBadge = styled.span`
-  background-color: red;
+  background-color: rgb(254, 121, 13);
   color: white;
-  border-radius: 50%;
-  padding: 1px 5px;
+  border-radius: 100%;
+  padding: 1px 4px;
   font-size: 0.7rem;
   position: absolute;
   top: -5px;
@@ -190,33 +285,32 @@ const UnreadCountBadge = styled(NotificationBadge)`
   background-color: rgb(254, 121, 13);
 `;
 
-const NotificationsDropdown = styled.div`
-  position: absolute;
-  top: 150%;
-  right: -20px;
-  width: 380px;
-  background-color: #fff;
-  border: 1px solid #dbdbdb;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  z-index: 20;
-  max-height: 400px;
-  overflow-y: auto;
-`;
-
 const NotificationItem = styled(Link)`
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  font-size: 0.9rem;
   text-decoration: none;
   color: #262626;
-  &:hover { background-color: #fafafa; }
+  
+  &:hover { 
+    background-color: #fafafa;
+  }
+
   img {
     width: 44px;
     height: 44px;
     border-radius: 50%;
     margin-right: 12px;
+  }
+
+  p {
+    font-size: 14px;
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  strong {
+    color: #000;
   }
 `;
 
@@ -254,9 +348,10 @@ const Navbar = () => {
     const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef();
+    const searchOverlayRef = useRef();
     
     useOnClickOutside(dropdownRef, () => setIsDropdownOpen(false));
-    useOnClickOutside(useRef(null), () => setIsMobileSearchOpen(false));
+    useOnClickOutside(searchOverlayRef, () => setIsMobileSearchOpen(false));
 
     useEffect(() => {
         if (!loggedInUser) return;
@@ -404,66 +499,155 @@ const Navbar = () => {
           )}
       </div>
     );
+    
+    // Se não houver usuário logado, não renderiza nada
+    if (!loggedInUser) {
+        return null;
+    }
 
     return (
-        <NavWrapper>
-            <NavContainer>
-                <Logo to="/">
-                    <img src={logoImage} alt="Aesthete Logo" />
-                </Logo>
-                
-                <SearchWrapper>
-                  {loggedInUser && <SearchComponent />}
-                </SearchWrapper>
+        // ==================================================================
+        // ALTERAÇÃO 2: Renderiza ambos os componentes (Header e Footer)
+        // O CSS cuidará de qual exibir com base no tamanho da tela
+        // ==================================================================
+        <>
+            {/* --- CABEÇALHO PARA DESKTOP --- */}
+            <DesktopHeader>
+                <NavContainer>
+                    <Logo to="/">
+                        <img src={logoImage} alt="Aesthete Logo" />
+                    </Logo>
+                    
+                    <SearchWrapper>
+                        <SearchComponent />
+                    </SearchWrapper>
 
-                <NavLinks>
-                    {loggedInUser ? (
-                        <>
-                            <DesktopNavLinks>
-                                <Link to="/" title="Feed">{location.pathname === '/' ? <GoHomeFill /> : <GoHome />}</Link>
-                                
-                                <NavIconWrapper title="Notificações" ref={dropdownRef}>
-                                    <div onClick={handleBellClick}>
-                                        <FaRegBell />
-                                        {unreadNotificationCount > 0 && <NotificationBadge>{unreadNotificationCount}</NotificationBadge>}
-                                    </div>
-                                    {isDropdownOpen && (
-                                        <NotificationsDropdown>
-                                            {/* ... Dropdown de notificações ... */}
-                                        </NotificationsDropdown>
-                                    )}
-                                </NavIconWrapper>
-                                
-                                <Link to={`/perfil/${loggedInUser.username}`} title="Meu Perfil">
-                                    <CgProfile />
-                                </Link>
+                    <NavLinks>
+                        <Link to="/" title="Feed">
+                            <NavIconWrapper isSelected={location.pathname === '/'}>
+                                <BiWorld />
+                            </NavIconWrapper>
+                        </Link>
 
-                            </DesktopNavLinks>
+                        <Link to="/chat" title="Mensagens Diretas">
+                            <NavIconWrapper isSelected={location.pathname === '/chat'}>
+                                <PiChats />
+                                {totalUnreadCount > 0 && <UnreadCountBadge>{totalUnreadCount}</UnreadCountBadge>}
+                            </NavIconWrapper>
+                        </Link>
+                        
+                        <Link to="/criar" title="Criar">
+                            <NavIconWrapper isSelected={location.pathname === '/criar' || location.pathname === '/novo-post' || location.pathname === '/stories/novo'}>
+                                {location.pathname === '/criar' || location.pathname === '/novo-post' || location.pathname === '/stories/novo' ? <IoAddCircle /> : <IoAddCircleOutline />}
+                            </NavIconWrapper>
+                        </Link>
 
-                            <Link to="/chat" title="Mensagens Diretas">
-                                <NavIconWrapper>
-                                    {location.pathname === '/chat' ? <RiSendPlaneFill /> : <FiSend />}
-                                    {totalUnreadCount > 0 && <UnreadCountBadge>{totalUnreadCount}</UnreadCountBadge>}
-                                </NavIconWrapper>
-                            </Link>
+                        <div title="Notificações" ref={dropdownRef} onClick={handleBellClick} style={{cursor: 'pointer'}}>
+                            <NavIconWrapper isSelected={false} disableEffect>
+                                <FaRegBell />
+                                {unreadNotificationCount > 0 && !isDropdownOpen && <NotificationBadge>{unreadNotificationCount}</NotificationBadge>}
+                            </NavIconWrapper>
+                            {isDropdownOpen && (
+                                <NotificationsDropdown>
+                                    {notifications.length > 0 ? notifications.map(notif => (
+                                        <NotificationItem 
+                                            key={notif._id} 
+                                            to={getNotificationLink(notif)}
+                                            onClick={() => setIsDropdownOpen(false)}
+                                        >
+                                            <img src={notif.sender.avatar.startsWith('http') ? notif.sender.avatar : `${API_URL}${notif.sender.avatar}`} alt={notif.sender.username} />
+                                            <p>
+                                                <strong>{notif.sender.username}</strong>
+                                                {' '}{getNotificationText(notif)}
+                                            </p>
+                                        </NotificationItem>
+                                    )) : <p style={{padding: '16px', textAlign: 'center', color: '#8e8e8e'}}>Nenhuma notificação.</p>}
+                                </NotificationsDropdown>
+                            )}
+                        </div>
 
-                            <LogoutButton onClick={handleLogout} title="Sair"><FiLogOut /></LogoutButton>
-                        </>
-                    ) : (
-                        <>
-                            <Link to="/login">Entrar</Link>
-                            <Link to="/registrar">Cadastre-se</Link>
-                        </>
-                    )}
-                </NavLinks>
+                        <Link to={`/perfil/${loggedInUser.username}`} title="Perfil">
+                            <NavIconWrapper isSelected={location.pathname === `/perfil/${loggedInUser.username}`}>
+                                <CgProfile />
+                            </NavIconWrapper>
+                        </Link>
 
-            </NavContainer>
+                        <LogoutButton onClick={handleLogout} title="Sair">
+                            <NavIconWrapper>
+                                <FiLogOut />
+                            </NavIconWrapper>
+                        </LogoutButton>
+                    </NavLinks>
+                </NavContainer>
+            </DesktopHeader>
+
+            {/* --- CABEÇALHO SIMPLIFICADO E RODAPÉ PARA MOBILE --- */}
             
-            <MobileSearchOverlay isOpen={isMobileSearchOpen}>
-                <IoArrowBack onClick={() => setIsMobileSearchOpen(false)} style={{cursor: 'pointer', marginRight: '15px', fontSize: '1.6rem'}}/>
-                <SearchComponent />
-            </MobileSearchOverlay>
-        </NavWrapper>
+            {/* ADIÇÃO 2: Cabeçalho superior simplificado para mobile (Logo e Busca) */}
+            <TopMobileHeader>
+              <BannerWrapper>
+                <Banner to="/">
+                  <img src={bannerImage} alt="Logo" />
+                </Banner>
+              </BannerWrapper>
+              
+              {/* BOTÃO DE BUSCA SUBSTITUÍDO POR LINK PARA O CHAT */}
+              <Link to="/chat" title="Mensagens Diretas">
+                  <NavIconWrapper isSelected={location.pathname === '/chat'}>
+                      <PiChats />
+                      {totalUnreadCount > 0 && <UnreadCountBadge>{totalUnreadCount}</UnreadCountBadge>}
+                  </NavIconWrapper>
+              </Link>
+          </TopMobileHeader>
+
+          <MobileSearchOverlay isOpen={isMobileSearchOpen} ref={searchOverlayRef}>
+              <IoArrowBack onClick={() => setIsMobileSearchOpen(false)} style={{cursor: 'pointer', marginRight: '15px', fontSize: '1.6rem'}}/>
+              <SearchComponent />
+          </MobileSearchOverlay>
+
+            {/* ADIÇÃO 3: O novo rodapé de navegação para mobile */}
+            <MobileFooter>
+              {/* Ícone 1: Feed (Mundo) */}
+              <Link to="/" title="Feed">
+                  <NavIconWrapper isSelected={location.pathname === '/'}>
+                      <BiWorld />
+                  </NavIconWrapper>
+              </Link>
+
+              {/* Ícone 2: Mensagens Diretas (Chats) */}
+              <Link to="/chat" title="Mensagens Diretas">
+                  <NavIconWrapper isSelected={location.pathname === '/chat'}>
+                      <PiChats />
+                      {totalUnreadCount > 0 && <UnreadCountBadge>{totalUnreadCount}</UnreadCountBadge>}
+                  </NavIconWrapper>
+              </Link>
+
+              {/* Ícone 3: Notificações (Sino) - com lógica de dropdown */}
+              <div title="Notificações" ref={dropdownRef} onClick={handleBellClick} style={{cursor: 'pointer', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+                  <NavIconWrapper isSelected={isDropdownOpen} disableEffect>
+                      <FaRegBell />
+                      {unreadNotificationCount > 0 && !isDropdownOpen && <NotificationBadge>{unreadNotificationCount}</NotificationBadge>}
+                  </NavIconWrapper>
+                  {isDropdownOpen && (
+                      <MobileNotificationsDropdown> {/* Usando o novo componente de dropdown */}
+                          {notifications.length > 0 ? notifications.map(notif => (
+                              <NotificationItem 
+                                  key={notif._id} 
+                                  to={getNotificationLink(notif)}
+                                  onClick={() => setIsDropdownOpen(false)}
+                              >
+                                  <img src={notif.sender.avatar.startsWith('http') ? notif.sender.avatar : `${API_URL}${notif.sender.avatar}`} alt={notif.sender.username} />
+                                  <p>
+                                      <strong>{notif.sender.username}</strong>
+                                      {' '}{getNotificationText(notif)}
+                                  </p>
+                              </NotificationItem>
+                          )) : <p style={{padding: '16px', textAlign: 'center', color: '#8e8e8e'}}>Nenhuma notificação.</p>}
+                      </MobileNotificationsDropdown>
+                  )}
+              </div>
+          </MobileFooter>
+        </>
     );
 };
 

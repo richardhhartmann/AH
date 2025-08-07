@@ -197,38 +197,6 @@ const usersData = [
     },
     // --- Novos Usuários ---
     {
-        username: 'marina_alves',
-        email: 'marina.alves@example.com',
-        password: 'password123',
-        profession: 'Maquiador(a)',
-        avatar: 'https://images.unsplash.com/photo-1596245455283-a923f7733237?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzJ8fHByb2ZpbGUlMjBwaG90b3xlbnwwfHwwfHx8MA%3D%3D',
-        bio: 'Especialista em maquiagem social e noivas. Realçando a beleza para momentos especiais. 💍',
-    },
-    {
-        username: 'leonardo_ribeiro',
-        email: 'leo.ribeiro@example.com',
-        password: 'password123',
-        profession: 'Cabeleireiro(a)',
-        avatar: 'https://images.unsplash.com/photo-1615572359976-1fe39507d2b9?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fGJhcmJlcnxlbnwwfHwwfHx8MA%3D%3D',
-        bio: 'Colorimetria e cortes modernos. Transformando cabelos com técnica e arte. 🎨',
-    },
-    {
-        username: 'clara_martins',
-        email: 'clara.martins@example.com',
-        password: 'password123',
-        profession: 'Designer de Sobrancelhas',
-        avatar: 'https://images.unsplash.com/photo-1599687449339-a78a2e04ca62?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjZ8fHByb2ZpbGUlMjBwaG90b3xlbnwwfHwwfHx8MA%3D%3D',
-        bio: 'Do design com henna à micropigmentação. O detalhe que faz toda a diferença no seu olhar.',
-    },
-    {
-        username: 'daniel_moraes',
-        email: 'daniel.moraes@example.com',
-        password: 'password123',
-        profession: 'Dermatologista',
-        avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da60710?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZG9jdG9yfGVufDB8fDB8fHww',
-        bio: 'Dermatologia clínica e estética. Saúde da pele em primeiro lugar. #dermatology',
-    },
-    {
         username: 'andre_silva',
         email: 'andre.silva@example.com',
         password: 'password123',
@@ -325,10 +293,6 @@ const importData = async () => {
             { user: userMap.rafael_oliveira._id, caption: 'Antes e depois que fala, né? Corte e finalização impecáveis. Satisfação do cliente é a meta. 💈 #barbershop #hairstyle', mediaUrl: 'https://images.pexels.com/photos/2065195/pexels-photo-2065195.jpeg?auto=compress&cs=tinysrgb&w=500' },
 
             // Posts dos novos usuários
-            { user: userMap.marina_alves._id, caption: 'Make para uma noiva maravilhosa hoje! Felicidade em participar de um dia tão especial. 👰‍♀️ #makeupnoiva #weddingmakeup', mediaUrl: 'https://images.pexels.com/photos/2253868/pexels-photo-2253868.jpeg?auto=compress&cs=tinysrgb&w=500' },
-            { user: userMap.leonardo_ribeiro._id, caption: 'Morena iluminada com tons de mel. A cor perfeita para o outono! 🍂 O que acharam? #colorimetria #cabelos', mediaUrl: 'https://images.pexels.com/photos/2811088/pexels-photo-2811088.jpeg?auto=compress&cs=tinysrgb&w=500' },
-            { user: userMap.clara_martins._id, caption: 'Micropigmentação fio a fio para preencher e definir. Naturalidade é tudo! #microblading #sobrancelhasperfeitas', mediaUrl: 'https://images.pexels.com/photos/3738347/pexels-photo-3738347.jpeg?auto=compress&cs=tinysrgb&w=500' },
-            { user: userMap.daniel_moraes._id, caption: 'Mito ou verdade: pele oleosa não precisa de hidratante? 🤔 MITO! A hidratação equilibra a produção de sebo. Use produtos oil-free!', mediaUrl: 'https://images.pexels.com/photos/4046313/pexels-photo-4046313.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.andre_silva._id, caption: 'Sua marca pessoal é o que as pessoas dizem sobre você quando você não está na sala. Vamos construir a sua juntos? #branding #posicionamento', mediaUrl: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.marcelo_campos._id, caption: 'A drenagem linfática no pós-operatório de cirurgias plásticas é essencial para reduzir o inchaço e acelerar a recuperação. #fisioterapiadermatofuncional #posoperatorio', mediaUrl: 'https://images.pexels.com/photos/4506269/pexels-photo-4506269.jpeg?auto=compress&cs=tinysrgb&w=500' },
             // Mais posts para usuários antigos
@@ -391,8 +355,6 @@ const importData = async () => {
             { user: userMap.pedro_almeida._id, mediaUrl: 'https://images.pexels.com/photos/2294361/pexels-photo-2294361.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 15 },
             { user: userMap.rodrigo_barros._id, mediaUrl: 'https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 10 },
             { user: userMap.isabela_costa._id, mediaUrl: 'https://images.pexels.com/photos/12093859/pexels-photo-12093859.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 12 },
-            { user: userMap.leonardo_ribeiro._id, mediaUrl: 'https://images.pexels.com/photos/5638138/pexels-photo-5638138.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 18 },
-            { user: userMap.daniel_moraes._id, mediaUrl: 'https://images.pexels.com/photos/5407206/pexels-photo-5407206.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 10 },
             { user: userMap.henrique._id, mediaUrl: 'https://images.pexels.com/photos/270348/pexels-photo-270348.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 15 },
         ];
         await Story.insertMany(storiesData);
