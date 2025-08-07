@@ -92,7 +92,7 @@ const BannerWrapper = styled.div`
 `;
 
 const Banner = styled(Link)`
-  margin-left: 25vw;
+  margin-left: 30vw;
   display: flex;
   justify-content: center;
   img {

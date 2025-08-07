@@ -89,7 +89,6 @@ const ActionButton = styled.button`
     border: 1px solid #dbdbdb;
     border-radius: 8px;
     background-color: #efefef;
-    font-weight: bold;
     cursor: pointer;
     flex-shrink: 0;
     &.primary {

@@ -245,21 +245,25 @@ const SinglePostPage = () => {
                         )}
                         
                         {comments.map((comment) => (
-                          comment && ( 
-                              <CommentItem key={comment._id}>
-                                  <img 
-                                      src={comment.author?.avatar?.startsWith('http') ? comment.author.avatar : `${API_URL}${comment.author.avatar}`} 
-                                      alt={comment.author?.username || 'Usuário desconhecido'} 
-                                  />
-                                  <p>
-                                      <Link to={`/perfil/${comment.author?.username}`}>
-                                          <strong>{comment.author?.username || 'Usuário desconhecido'}</strong>
-                                      </Link>
-                                      {' '}{comment.text}
-                                  </p>
-                              </CommentItem>
+                          comment && comment.author && (
+                            <CommentItem key={comment._id}>
+                              <img 
+                                src={
+                                  comment.author.avatar?.startsWith('http') 
+                                    ? comment.author.avatar 
+                                    : `${API_URL}${comment.author.avatar || '/default-avatar.png'}`
+                                } 
+                                alt={comment.author.username || 'Usuário desconhecido'} 
+                              />
+                              <p>
+                                <Link to={`/perfil/${comment.author.username || ''}`}>
+                                  <strong>{comment.author.username || 'Usuário desconhecido'}</strong>
+                                </Link>
+                                {' '}{comment.text}
+                              </p>
+                            </CommentItem>
                           )
-                      ))}
+                        ))}
                     </CommentList>
 
                     <ActionsWrapper>
