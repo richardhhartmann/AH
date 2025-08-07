@@ -1,53 +1,137 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import api from '../api/axios'; // Mude a importação
-import Post from '../components/Post'; // Reutilizamos o componente Post
+import api, { API_URL } from '../api/axios';
 import styled from 'styled-components';
 
-const ENDPOINT = process.env.REACT_APP_API_URL;
+// --- Ícones ---
+// (Você pode precisar instalar react-icons se ainda não tiver: npm install react-icons)
+import { FaHeart, FaRegHeart } from 'react-icons/fa'; // Ícones de coração
 
-// --- Styled Components ---
+// --- Styled Components (com adições) ---
 
 const PageContainer = styled.div`
   display: flex;
   justify-content: center;
   padding: 20px;
+  background-color: #fafafa;
 `;
 
-const CommentsWrapper = styled.div`
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #dbdbdb;
+const PostAndCommentsWrapper = styled.div`
+  display: flex;
+  background-color: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 935px;
+  width: 100%;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    border: none;
+    border-radius: 0;
+  }
+`;
+
+const ImageContainer = styled.div`
+  flex: 1.5;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    min-height: 400px;
+  }
+`;
+
+const DetailsContainer = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 300px;
+`;
+
+const PostHeader = styled.div`
+  padding: 14px 16px;
+  border-bottom: 1px solid #dbdbdb;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 14px;
+  }
 `;
 
 const CommentList = styled.ul`
   list-style: none;
-  padding: 0;
-  margin-bottom: 20px;
+  padding: 16px;
+  flex-grow: 1;
+  overflow-y: auto;
 `;
 
 const CommentItem = styled.li`
-  margin-bottom: 10px;
+  margin-bottom: 16px;
   font-size: 0.9rem;
-  
-  strong {
-    margin-right: 8px;
+  display: flex;
+  align-items: flex-start;
+  line-height: 1.4;
+
+  img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 12px;
+  }
+
+  p {
+    word-break: break-word;
   }
 `;
 
+// --- NOVOS STYLED COMPONENTS PARA AÇÕES E CURTIDAS ---
+const ActionsWrapper = styled.div`
+  padding: 8px 16px;
+  border-top: 1px solid #dbdbdb;
+  flex-shrink: 0;
+`;
+
+const ActionButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+`;
+
+const LikesCounter = styled.p`
+  font-size: 0.9rem;
+  font-weight: bold;
+  padding: 0 16px 8px;
+`;
+
+
 const CommentForm = styled.form`
   display: flex;
-  margin-top: 10px;
-  
+  padding: 10px;
+  border-top: 1px solid #dbdbdb;
+  flex-shrink: 0;
   input {
     flex-grow: 1;
     border: none;
-    border-top: 1px solid #dbdbdb;
-    padding: 12px;
+    padding: 8px;
     outline: none;
   }
-  
   button {
     background: none;
     border: none;
@@ -67,13 +151,12 @@ const SinglePostPage = () => {
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(true);
-    const [isCommentInputVisible, setIsCommentInputVisible] = useState(false);
 
     useEffect(() => {
-        const fetchPostAndComments = async () => {
+        const fetchPost = async () => {
+            setLoading(true);
             try {
-                // Buscamos o post e populamos os usuários dos comentários já existentes
-                const { data } = await api.get(`/posts/${postId}?populate=comments.user`);
+                const { data } = await api.get(`/posts/${postId}`);
                 setPost(data);
                 setComments(data.comments);
             } catch (error) {
@@ -83,80 +166,104 @@ const SinglePostPage = () => {
                 setLoading(false);
             }
         };
-        fetchPostAndComments();
+        fetchPost();
     }, [postId, navigate]);
+
+    // --- LÓGICA PARA CURTIR O POST ---
+    const handleLike = async () => {
+        if (!post || !loggedInUser) return;
+
+        const originalPost = { ...post };
+        const isAlreadyLiked = post.likes.includes(loggedInUser._id);
+
+        // Atualização Otimista
+        const newLikes = isAlreadyLiked
+            ? post.likes.filter(id => id !== loggedInUser._id)
+            : [...post.likes, loggedInUser._id];
+        
+        setPost({ ...post, likes: newLikes });
+
+        try {
+            await api.post(`/posts/${post._id}/like`);
+        } catch (error) {
+            console.error("Erro ao curtir o post", error);
+            setPost(originalPost); // Reverte em caso de erro
+        }
+    };
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim()) return;
-
+        if (!newComment.trim() || !loggedInUser) return;
         try {
-            const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-            const { data: addedComment } = await api.post(
-                `/posts/${postId}/comment`,
-                { text: newComment }
-            );
-            
-            // Adiciona o novo comentário à lista (UI otimista)
+            const { data: addedComment } = await api.post(`/posts/${postId}/comment`, { text: newComment });
             setComments([...comments, addedComment]);
-            setNewComment(''); // Limpa o campo de texto
+            setNewComment('');
         } catch (error) {
             console.error("Erro ao adicionar comentário", error);
             alert("Não foi possível publicar seu comentário.");
         }
     };
 
-    const toggleCommentInput = () => {
-        setIsCommentInputVisible(prevState => !prevState); 
-    };
-
-    if (loading) return <p>Carregando post...</p>;
+    if (loading) return <p style={{ textAlign: 'center', marginTop: '50px' }}>Carregando...</p>;
     if (!post) return null;
+
+    const isLikedByMe = loggedInUser ? post.likes.includes(loggedInUser._id) : false;
 
     return (
         <PageContainer>
-            <div>
-                {/* 3. PASSE A FUNÇÃO COMO PROP PARA O COMPONENTE POST */}
-                <Post post={post} onCommentClick={toggleCommentInput} />
-
-                <CommentsWrapper>
+            <PostAndCommentsWrapper>
+                <ImageContainer>
+                    <img src={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${API_URL}${post.mediaUrl}`} alt={post.caption} />
+                </ImageContainer>
+                <DetailsContainer>
+                    <PostHeader>
+                        <img src={post.user.avatar.startsWith('http') ? post.user.avatar : `${API_URL}${post.user.avatar}`} alt={post.user.username} />
+                        <Link to={`/perfil/${post.user.username}`}><strong>{post.user.username}</strong></Link>
+                    </PostHeader>
                     <CommentList>
-                        {comments.map((comment, index) => {
-
-                            if (!comment.user) {
-                                return (
-                                    <CommentItem key={comment._id || index}>
-                                        <strong>usuário anônimo</strong>
-                                        <span>{comment.text}</span>
-                                    </CommentItem>
-                                );
-                            }
-
-                            return (
-                                <CommentItem key={comment._id}>
-                                    <Link to={`/perfil/${comment.user.username}`}>
-                                        <strong>{comment.user.username}</strong>
-                                    </Link>
-                                    <span>{comment.text}</span>
-                                </CommentItem>
-                            );
-                        })}
+                        {post.caption && (
+                            <CommentItem>
+                                <img src={post.user.avatar.startsWith('http') ? post.user.avatar : `${API_URL}${post.user.avatar}`} alt={post.user.username} />
+                                <p>
+                                    <Link to={`/perfil/${post.user.username}`}><strong>{post.user.username}</strong></Link>
+                                    {' '}{post.caption}
+                                </p>
+                            </CommentItem>
+                        )}
+                        
+                        {comments.map((comment) => (
+                            <CommentItem key={comment._id}>
+                                <img src={comment.user.avatar.startsWith('http') ? comment.user.avatar : `${API_URL}${comment.user.avatar}`} alt={comment.user.username} />
+                                <p>
+                                    <Link to={`/perfil/${comment.user.username}`}><strong>{comment.user.username}</strong></Link>
+                                    {' '}{comment.text}
+                                </p>
+                            </CommentItem>
+                        ))}
                     </CommentList>
+
+                    {/* --- SEÇÃO DE AÇÕES E CURTIDAS ADICIONADA AQUI --- */}
+                    <ActionsWrapper>
+                        <ActionButton onClick={handleLike}>
+                            {isLikedByMe ? <FaHeart color="red" /> : <FaRegHeart />}
+                        </ActionButton>
+                        {/* Outros ícones como 'comentar' e 'salvar' podem vir aqui */}
+                    </ActionsWrapper>
+                    <LikesCounter>
+                        {post.likes.length} curtidas
+                    </LikesCounter>
                     
-                    {isCommentInputVisible && (
-                        <CommentForm onSubmit={handleCommentSubmit}>
-                            <input
-                                type="text"
-                                placeholder="Adicione um comentário..."
-                                value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
-                                autoFocus
-                            />
-                            <button type="submit">Publicar</button>
-                        </CommentForm>
-                    )}
-                </CommentsWrapper>
-            </div>
+                    <CommentForm onSubmit={handleCommentSubmit}>
+                        <input
+                            type="text"
+                            placeholder="Adicione um comentário..."
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                        />
+                        <button type="submit">Publicar</button>
+                    </CommentForm>
+                </DetailsContainer>
+            </PostAndCommentsWrapper>
         </PageContainer>
     );
 };

@@ -13,7 +13,7 @@ const GlobalStyles = createGlobalStyle`
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #fafafa; /* Cor de fundo padrão do Instagram */
+    background-color: #fafafa;
   }
 
   a {
@@ -23,8 +23,15 @@ const GlobalStyles = createGlobalStyle`
 
   main {
     max-width: 975px;
+    /* Padding padrão para desktop */
     padding: 30px 20px;
     margin: 0 auto;
+
+    /* --- AQUI ESTÁ A CORREÇÃO --- */
+    /* Em telas mobile, adicionamos um espaço extra no final da página */
+    @media (max-width: 768px) {
+      padding-bottom: 100px; /* Altura do rodapé (60px) + espaço extra (40px) */
+    }
   }
 `;
 
