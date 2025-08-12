@@ -92,6 +92,22 @@ exports.followUser = async (req, res) => {
     }
 };
 
+exports.deleteUserAccount = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        await Post.deleteMany({ user: userId });
+
+        await User.findByIdAndDelete(userId);
+
+        res.json({ message: 'Conta e dados associados removidos com sucesso.' });
+
+    } catch (error) {
+        console.error("Erro ao deletar conta:", error);
+        res.status(500).json({ message: "Erro no servidor." });
+    }
+};
+
 // @desc    Atualizar o perfil do usuário
 // @route   PUT /api/users/profile
 exports.updateUserProfile = async (req, res) => {

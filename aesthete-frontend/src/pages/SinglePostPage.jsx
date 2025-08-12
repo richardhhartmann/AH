@@ -13,8 +13,15 @@ import { FaHeart, FaRegHeart } from 'react-icons/fa'; // Ícones de coração
 const PageContainer = styled.div`
   display: flex;
   justify-content: center;
+  align-items: center; /* Adicionado para melhor alinhamento vertical no desktop */
   padding: 20px;
   background-color: #fafafa;
+
+  @media (max-width: 768px) {
+    padding: 0;
+    min-height: 100vh; 
+    align-items: flex-start;
+  }
 `;
 
 const PostAndCommentsWrapper = styled.div`
@@ -25,11 +32,17 @@ const PostAndCommentsWrapper = styled.div`
   overflow: hidden;
   max-width: 935px;
   width: 100%;
+
+  max-height: 90vh; /* Limita a altura máxima a 90% da altura da tela */
   
   @media (max-width: 768px) {
     flex-direction: column;
     border: none;
     border-radius: 0;
+    
+    height: 100%;
+    max-height: none;
+    width: 100vw;
   }
 `;
 
@@ -53,12 +66,49 @@ const DetailsContainer = styled.div`
   display: flex;
   flex-direction: column;
   min-width: 300px;
+  overflow: hidden; // Mantemos isso do desktop, é uma boa prática.
+
+  @media (max-width: 768px) {
+    flex-grow: 1; 
+    min-height: 0;
+  }
+`;
+
+const PostHeaderMobile = styled.div`
+  display: none;
+  flex-direction: row;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid #dbdbdb;
+
+  img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 12px;
+  }
+
+  a {
+    text-decoration: none;
+    color: #000;
+    font-weight: bold;
+    margin-right: 8px;
+  }
+
+  p {
+    flex: 1;
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    display: flex;
+  }
 `;
 
 const PostHeader = styled.div`
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;       /* Alterado de 'column' para 'row' */
+  align-items: center;      /* Agora alinha os itens verticalmente */
   padding: 14px 16px;
   border-bottom: 1px solid #dbdbdb;
   flex-shrink: 0;
@@ -67,13 +117,17 @@ const PostHeader = styled.div`
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    margin: 0 auto 8px auto; /* centraliza e afasta da info abaixo */
+    margin: 0 12px 0 0; /* Remove a margem inferior e adiciona margem à direita */
   }
 
   a {
     text-decoration: none;
     color: #000;
     font-weight: bold;
+  }
+
+  @media (max-width: 767px) { /* Adjusted breakpoint to be consistent */
+    display: none;
   }
 `;
 
@@ -95,13 +149,22 @@ const CommentItem = styled.li`
   img {
     width: 32px;
     height: 32px;
-    border-radius: 50%;
+    border-radius: 100%;
     margin-right: 12px;
+  }
+
+  img.post-author {
+    @media (max-width: 767px) {
+      display: none;
+    }
   }
 
   p {
     word-break: break-word;
+    flex: 1;
+    min-width: 0;
   }
+
 `;
 
 // --- NOVOS STYLED COMPONENTS PARA AÇÕES E CURTIDAS ---
@@ -219,75 +282,95 @@ const SinglePostPage = () => {
     const isLikedByMe = loggedInUser ? post.likes.includes(loggedInUser._id) : false;
 
     return (
-        <PageContainer>
-            <PostAndCommentsWrapper>
-                <ImageContainer>
-                    <img src={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${API_URL}${post.mediaUrl}`} alt={post.caption} />
-                </ImageContainer>
-                <DetailsContainer>
-                    
-                    <CommentList>
-                        {post.caption && (
-                            <CommentItem>
-                                {post.user && (
-                                  <img
-                                    src={post.user?.avatar?.startsWith('http') ? post.user.avatar : `${API_URL}${post.user?.avatar || '/default-avatar.png'}`}
-                                    alt={post.user?.username || 'Usuário'} 
-                                  />
-                                )}
-                                <p>
-                                    <Link to={`/perfil/${post.user?.username || ''}`}>
-                                      <strong>{post.user?.username || 'Usuário'}</strong>
-                                    </Link>
-                                    {' '}{post.caption}
-                                </p>
-                            </CommentItem>
-                        )}
-                        
-                        {comments.map((comment) => (
-                          comment && comment.author && (
-                            <CommentItem key={comment._id}>
-                              <img 
-                                src={
-                                  comment.author.avatar?.startsWith('http') 
-                                    ? comment.author.avatar 
-                                    : `${API_URL}${comment.author.avatar || '/default-avatar.png'}`
-                                } 
-                                alt={comment.author.username || 'Usuário desconhecido'} 
-                              />
-                              <p>
-                                <Link to={`/perfil/${comment.author.username || ''}`}>
-                                  <strong>{comment.author.username || 'Usuário desconhecido'}</strong>
-                                </Link>
-                                {' '}{comment.text}
-                              </p>
-                            </CommentItem>
-                          )
-                        ))}
-                    </CommentList>
+      <PageContainer>
+        <PostAndCommentsWrapper>
+          <PostHeaderMobile>
+            <Link to={`/perfil/${post.user?.username || ''}`}>
+              <img
+                src={post.user?.avatar?.startsWith('http')
+                  ? post.user.avatar
+                  : `${API_URL}${post.user?.avatar || '/default-avatar.png'}`}
+                alt={post.user?.username || 'Usuário'}
+              />
+            </Link>
+            <Link to={`/perfil/${post.user?.username || ''}`}>
+              <strong>{post.user?.username || 'Usuário'}</strong>
+            </Link>
+          </PostHeaderMobile>
 
-                    <ActionsWrapper>
-                        <ActionButton onClick={handleLike}>
-                            {isLikedByMe ? <FaHeart color="red" /> : <FaRegHeart />}
-                        </ActionButton>
-                    </ActionsWrapper>
-                    <LikesCounter>
-                        {post.likes.length} curtidas
-                    </LikesCounter>
-                    
-                    <CommentForm onSubmit={handleCommentSubmit}>
-                        <input
-                            type="text"
-                            placeholder="Adicione um comentário..."
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                        />
-                        <button type="submit">Publicar</button>
-                    </CommentForm>
-                </DetailsContainer>
-            </PostAndCommentsWrapper>
-        </PageContainer>
+          <ImageContainer onDoubleClick={handleLike}>
+            <img
+              src={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${API_URL}${post.mediaUrl}`}
+              alt={post.caption}
+            />
+          </ImageContainer>
+
+          <DetailsContainer>
+            <CommentList>
+              {post.caption && (
+                <CommentItem>
+                  <img
+                    className="post-author"
+                    src={post.user?.avatar?.startsWith('http')
+                      ? post.user.avatar
+                      : `${API_URL}${post.user?.avatar || '/default-avatar.png'}`}
+                    alt={post.user?.username || 'Usuário'}
+                  />
+                  <p>
+                    <Link to={`/perfil/${post.user?.username || ''}`}>
+                      <strong style={{ marginRight: '8px' }}>
+                        {post.user?.username || 'Usuário'}
+                      </strong>
+                    </Link>
+                    {post.caption}
+                  </p>
+                </CommentItem>
+            )}
+              
+              {comments.map((comment) => (
+                comment && comment.author && (
+                  <CommentItem key={comment._id}>
+                    <img
+                      src={
+                        comment.author.avatar?.startsWith('http')
+                          ? comment.author.avatar
+                          : `${API_URL}${comment.author.avatar || '/default-avatar.png'}`
+                      }
+                      alt={comment.author.username || 'Usuário desconhecido'}
+                    />
+                    <p>
+                      <Link to={`/perfil/${comment.author.username || ''}`}>
+                        <strong>{comment.author.username || 'Usuário desconhecido'}</strong>
+                      </Link>{' '}
+                      {comment.text}
+                    </p>
+                  </CommentItem>
+                )
+              ))}
+            </CommentList>
+
+            <ActionsWrapper>
+              <ActionButton onClick={handleLike}>
+                {isLikedByMe ? <FaHeart color="red" /> : <FaRegHeart />}
+              </ActionButton>
+            </ActionsWrapper>
+            <LikesCounter>
+              {post.likes.length} curtidas
+            </LikesCounter>
+
+            <CommentForm onSubmit={handleCommentSubmit}>
+              <input
+                type="text"
+                placeholder="Adicione um comentário..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+              />
+              <button type="submit">Publicar</button>
+            </CommentForm>
+          </DetailsContainer>
+        </PostAndCommentsWrapper>
+      </PageContainer>
     );
-};
+    };
 
 export default SinglePostPage;

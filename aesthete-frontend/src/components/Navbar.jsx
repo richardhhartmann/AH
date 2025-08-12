@@ -87,17 +87,16 @@ const BannerWrapper = styled.div`
   justify-content: center;   // Alinha no eixo horizontal
   align-items: center;       // Alinha no eixo vertical
   height: 100vh;             // Ocupa altura total da tela
-  text-align: center;
+  text-align: left;
 
 `;
 
 const Banner = styled(Link)`
-  margin-left: 30vw;
   display: flex;
   justify-content: center;
   img {
     height: 45px;
-    vertical-align: middle;
+    vertical-align: left;
   }
 `;
 
@@ -160,19 +159,22 @@ const MobileFooter = styled.footer`
 `;
 
 const TopMobileHeader = styled.div`
-    display: none;
-    @media (max-width: 768px) {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0 20px;
-        height: 60px;
-        background-color: rgb(255, 240, 233);
-        border-bottom: 1px solid #dbdbdb;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
+    display: none;
+    @media (max-width: 768px) {
+        border-radius: 20px 20px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 20px;
+        height: 60px;
+        background-color: rgb(255, 240, 233);
+        border-bottom: 1px solid #dbdbdb;
+        position: fixed; /* ALTERADO */
+        top: 0;
+        left: 0;         /* ADICIONADO */
+        width: 100%;     /* ADICIONADO */
+        z-index: 10;
+    }
 `;
 
 const MobileSearchOverlay = styled.div`
@@ -213,7 +215,7 @@ const SearchResultsDropdown = styled.div`
   border: 1px solid #dbdbdb;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  z-index: 20;
+  z-index: 999;
   max-height: 300px;
   overflow-y: auto;
 `;
@@ -349,9 +351,19 @@ const Navbar = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef();
     const searchOverlayRef = useRef();
+    const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
     
     useOnClickOutside(dropdownRef, () => setIsDropdownOpen(false));
-    useOnClickOutside(searchOverlayRef, () => setIsMobileSearchOpen(false));
+    useOnClickOutside(searchOverlayRef, () => {
+        setIsMobileSearchOpen(false);
+        setIsFocused(false); // Adicionado para limpar o estado
+    });
+
+    useEffect(() => {
+      const handleResize = () => setIsDesktop(window.innerWidth > 768);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (!loggedInUser) return;
@@ -463,42 +475,70 @@ const Navbar = () => {
     };
 
     const SearchComponent = () => (
-      <div style={{width: '100%', position: 'relative'}}>
-          <SearchInput
-              type="text"
-              placeholder="Buscar..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-          />
-          {isFocused && (
-              <SearchResultsDropdown>
-                  {query.length >= 2 && results.length > 0 ? (
-                      results.map((user) => (
-                          <SearchResultItem key={user._id} onMouseDown={() => handleResultClick(user)}>
-                              <img src={user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`} alt={user.username} />
-                              <span>{user.username}</span>
-                          </SearchResultItem>
-                      ))
-                  ) : ( query.length === 0 && recentSearches.length > 0 && (
-                      <>
-                          <RecentSearchHeader>
-                              <span>Recente</span>
-                              <button onClick={clearRecentSearches}>Limpar tudo</button>
-                          </RecentSearchHeader>
-                          {recentSearches.map((user) => (
-                              <SearchResultItem key={user._id} onMouseDown={() => handleResultClick(user)}>
-                                  <img src={user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`} alt={user.username} />
-                                  <span>{user.username}</span>
-                              </SearchResultItem>
-                          ))}
-                      </>
-                  ))}
-              </SearchResultsDropdown>
-          )}
-      </div>
-    );
+    <div style={{ width: '100%', position: 'relative' }}>
+      <SearchInput
+        type="text"
+        placeholder="Buscar..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onFocus={() => setIsFocused(true)}
+        // O onBlur com setTimeout ajuda a garantir que o clique no resultado funcione antes do dropdown fechar
+        onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+      />
+
+      {/* Apenas um dropdown é renderizado, e seu conteúdo muda conforme a lógica abaixo */}
+      {isFocused && (
+        <SearchResultsDropdown>
+          {/* Lógica unificada: */}
+          {results.length > 0 && query.trim() !== '' ? (
+            // 1. Se houver resultados de busca, mostre-os.
+            results.map((user) => (
+              <SearchResultItem
+                key={user._id}
+                // Usamos onMouseDown para registrar o clique antes do onBlur do input
+                onMouseDown={() => handleResultClick(user)}
+              >
+                <img
+                  src={
+                    user.avatar.startsWith('http')
+                      ? user.avatar
+                      : `${API_URL}${user.avatar}`
+                  }
+                  alt={user.username}
+                />
+                <span>{user.username}</span>
+              </SearchResultItem>
+            ))
+          ) : query.length === 0 && recentSearches.length > 0 ? (
+            // 2. Senão, se o campo estiver vazio e houver buscas recentes, mostre as buscas recentes.
+            <>
+              <RecentSearchHeader>
+                <span>Recente</span>
+                <button onClick={clearRecentSearches}>Limpar tudo</button>
+              </RecentSearchHeader>
+              {recentSearches.map((user) => (
+                <SearchResultItem
+                  key={user._id}
+                  onMouseDown={() => handleResultClick(user)}
+                >
+                  <img
+                    src={
+                      user.avatar.startsWith('http')
+                        ? user.avatar
+                        : `${API_URL}${user.avatar}`
+                    }
+                    alt={user.username}
+                  />
+                  <span>{user.username}</span>
+                </SearchResultItem>
+              ))}
+            </>
+          ) : null /* 3. Caso contrário (buscando ou sem resultados), não mostre nada. */}
+        </SearchResultsDropdown>
+      )}
+    </div>
+  );
+
     
     // Se não houver usuário logado, não renderiza nada
     if (!loggedInUser) {
@@ -536,10 +576,19 @@ const Navbar = () => {
                             </NavIconWrapper>
                         </Link>
                         
-                        <Link to="/criar" title="Criar">
-                            <NavIconWrapper isSelected={location.pathname === '/criar' || location.pathname === '/novo-post' || location.pathname === '/stories/novo'}>
-                                {location.pathname === '/criar' || location.pathname === '/novo-post' || location.pathname === '/stories/novo' ? <IoAddCircle /> : <IoAddCircleOutline />}
-                            </NavIconWrapper>
+                        <Link
+                          to={isDesktop ? '/novo-post' : '/criar'}
+                          title="Criar"
+                        >
+                          <NavIconWrapper
+                            isSelected={
+                              location.pathname === '/criar' ||
+                              location.pathname === '/novo-post' ||
+                              location.pathname === '/stories/novo'
+                            }
+                          >
+                            {location.pathname === '/criar' || location.pathname === '/novo-post' || location.pathname === '/stories/novo' ? <IoAddCircle /> : <IoAddCircleOutline />}
+                          </NavIconWrapper>
                         </Link>
 
                         <div title="Notificações" ref={dropdownRef} onClick={handleBellClick} style={{cursor: 'pointer'}}>
@@ -587,7 +636,7 @@ const Navbar = () => {
             <TopMobileHeader>
               <BannerWrapper>
                 <Banner to="/">
-                  <img src={bannerImage} alt="Logo" />
+                  <img src={logoImage} alt="Logo" />
                 </Banner>
               </BannerWrapper>
               
@@ -601,9 +650,17 @@ const Navbar = () => {
           </TopMobileHeader>
 
           <MobileSearchOverlay isOpen={isMobileSearchOpen} ref={searchOverlayRef}>
-              <IoArrowBack onClick={() => setIsMobileSearchOpen(false)} style={{cursor: 'pointer', marginRight: '15px', fontSize: '1.6rem'}}/>
-              <SearchComponent />
-          </MobileSearchOverlay>
+            <IoArrowBack 
+                onClick={() => {
+                    setIsMobileSearchOpen(false);
+                    setIsFocused(false); // Adicionado para limpar o estado
+                }} 
+                style={{cursor: 'pointer', marginRight: '15px', fontSize: '1.6rem'}}
+            />
+            {/* O componente só será montado quando a busca mobile estiver aberta */}
+            {isMobileSearchOpen && <SearchComponent />}
+        </MobileSearchOverlay>
+
 
             {/* ADIÇÃO 3: O novo rodapé de navegação para mobile */}
             <MobileFooter>

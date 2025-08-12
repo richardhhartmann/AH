@@ -1,109 +1,140 @@
 // Caminho: src/pages/NewPostPage.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import styled, { css } from 'styled-components';
 import api from '../api/axios';
-import styled from 'styled-components';
+import PostCreationModal from '../components/PostCreationModal'; // Importe o novo componente de modal
 
-const ENDPOINT = process.env.REACT_APP_API_URL;
+// --- ESTILOS ---
 
-// Estilos para o formulário
-const FormContainer = styled.div`
+// Estilo para a área de arrastar e soltar (Dropzone)
+const DropzoneContainer = styled.div`
     display: flex;
     flex-direction: column;
+    justify-content: center;
     align-items: center;
-    padding: 20px;
-    background-color: #fff;
-    border: 1px solid #dbdbdb;
-    border-radius: 8px;
-    max-width: 500px;
-    margin: 20px auto;
-`;
-
-const StyledTextarea = styled.textarea`
     width: 100%;
-    height: 100px;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #dbdbdb;
-    border-radius: 4px;
-    resize: vertical;
-    font-family: inherit;
-`;
-
-const StyledInput = styled.input`
-    width: 100%;
-    margin-bottom: 15px;
-`;
-
-const StyledButton = styled.button`
-    width: 100%;
-    padding: 10px;
-    background-color: #0095f6;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-weight: bold;
+    max-width: 600px;
+    height: 400px;
+    border: 2px dashed #dbdbdb;
+    border-radius: 12px;
+    background-color: #fafafa;
+    color: #8e8e8e;
+    font-size: 1.2rem;
+    text-align: center;
     cursor: pointer;
+    margin: 40px auto;
+    padding: 20px;
+    transition: border-color 0.3s, background-color 0.3s;
 
-    &:hover {
-        background-color: #0077c6;
+    p {
+        margin: 0;
     }
+
+    /* Estilo ativado quando um arquivo é arrastado sobre a área */
+    ${({ isDragActive }) =>
+        isDragActive &&
+        css`
+            border-color: #0095f6;
+            background-color: #f0f8ff;
+        `}
 `;
 
-const ImagePreview = styled.img`
-    max-width: 100%;
-    margin-top: 15px;
-    border-radius: 4px;
+// Input de arquivo real, que ficará oculto
+const HiddenInput = styled.input`
+    display: none;
 `;
 
+
+// --- COMPONENTE ---
 
 const NewPostPage = () => {
-    const [caption, setCaption] = useState('');
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState('');
+    const [isDragActive, setIsDragActive] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const inputRef = useRef(null);
 
     const navigate = useNavigate();
     const { user } = useSelector((state) => state.auth);
 
-    const handleFileChange = (e) => {
-        const selectedFile = e.target.files[0];
-        setFile(selectedFile);
+    // Função que processa o arquivo selecionado
+    const handleFileSelect = useCallback((selectedFile) => {
         if (selectedFile) {
+            setFile(selectedFile);
             setPreview(URL.createObjectURL(selectedFile));
+            setIsModalOpen(true); // Abre o modal
+        }
+    }, []);
+
+    // Funções para lidar com os eventos de arrastar
+    const handleDrag = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setIsDragActive(true);
+        } else if (e.type === "dragleave") {
+            setIsDragActive(false);
+        }
+    }, []);
+
+    // Função para lidar com o evento de soltar o arquivo
+    const handleDrop = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragActive(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFileSelect(e.dataTransfer.files[0]);
+        }
+    }, [handleFileSelect]);
+
+    // Dispara o clique no input oculto
+    const handleClick = () => {
+        inputRef.current.click();
+    };
+
+    // Lida com a seleção de arquivo através do clique
+    const handleFileChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFileSelect(e.target.files[0]);
         }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    // Fecha o modal e reseta os estados
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setFile(null);
+        setPreview('');
+        if (inputRef.current) {
+            inputRef.current.value = ""; // Permite selecionar o mesmo arquivo de novo
+        }
+    };
 
-        // 1. Verifica se o usuário está logado e se um arquivo foi selecionado
+    // Função final de publicação, chamada pelo modal
+    const handlePublish = async (caption) => {
         if (!user) {
             alert('Você precisa estar logado para criar um post.');
             navigate('/login');
             return;
         }
         if (!file) {
-            alert('Por favor, selecione uma imagem.');
+            alert('Nenhum arquivo selecionado.');
             return;
         }
 
-        // 2. Cria um objeto FormData para enviar arquivo + texto
         const formData = new FormData();
         formData.append('media', file);
         formData.append('caption', caption);
 
         try {
             await api.post('/posts', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            }
-        });
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
 
-            alert('Post criado com sucesso!');
-            navigate('/'); // Redireciona para o feed após o sucesso
-
+            handleCloseModal();
+            navigate('/');
         } catch (error) {
             console.error('Erro ao criar o post', error.response?.data || error.message);
             alert('Falha ao criar o post. Verifique o console para mais detalhes.');
@@ -111,20 +142,37 @@ const NewPostPage = () => {
     };
 
     return (
-        <FormContainer>
-            <h2>Criar Nova Publicação</h2>
-            <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-                {/* O resto do JSX continua o mesmo... */}
-                <StyledTextarea
-                    value={caption}
-                    onChange={(e) => setCaption(e.target.value)}
-                    placeholder="Escreva uma legenda..."
+        <>
+            {/* ETAPA 1: Área de seleção de arquivo */}
+            {!isModalOpen && (
+                <DropzoneContainer
+                    onDragEnter={handleDrag}
+                    onDragOver={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDrop={handleDrop}
+                    onClick={handleClick}
+                    isDragActive={isDragActive}
+                >
+                    <HiddenInput
+                        type="file"
+                        ref={inputRef}
+                        onChange={handleFileChange}
+                        accept="image/*,video/*"
+                    />
+                    <p>Arraste uma foto ou vídeo aqui ou clique para selecionar</p>
+                </DropzoneContainer>
+            )}
+
+            {/* ETAPAS 2 e 3: Modal de Edição e Publicação */}
+            {isModalOpen && (
+                <PostCreationModal
+                    preview={preview}
+                    fileType={file?.type}
+                    onClose={handleCloseModal}
+                    onPublish={handlePublish}
                 />
-                <StyledInput type="file" name="media" onChange={handleFileChange} required />
-                <StyledButton type="submit">Publicar</StyledButton>
-                {preview && <ImagePreview src={preview} alt="Pré-visualização" />}
-            </form>
-        </FormContainer>
+            )}
+        </>
     );
 };
 

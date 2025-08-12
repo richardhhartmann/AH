@@ -1,23 +1,36 @@
 const path = require('path');
+const fs = require('fs'); 
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const connectDB = require('./src/config/db');
 const User = require('./src/models/User');
 const Post = require('./src/models/Post');
+const Ad = require('./src/models/Ad'); 
 const Chat = require('./src/models/Chat');
 const Message = require('./src/models/Message');
 const Story = require('./src/models/Story');
+const Comment = require('./src/models/Comment');
 
-// Simula o caminho da imagem do logo
-const logoImage = 'https://i.imgur.com/gCe1sA1.png'; // Use um link direto para a imagem
+const logoPath = path.join(__dirname, 'uploads', 'avatars', 'logo.png');
+
+const localLogoApiRoute = '/uploads/avatars/logo.png';
+
+const fallbackLogoUrl = 'https://i.imgur.com/iliidAM.jpeg';
+
+let logoImage;
+if (fs.existsSync(logoPath)) {
+  logoImage = localLogoApiRoute;
+  console.log('✅ Logo local encontrado. Usando o caminho da API.');
+} else {
+  logoImage = fallbackLogoUrl;
+  console.log('⚠️ Logo local não encontrado. Usando URL de fallback.');
+}
 
 dotenv.config();
 
 connectDB();
 
-// --- DADOS DE USUÁRIOS EXPANDIDOS (MANTENDO PROFISSÕES EXISTENTES) ---
 const usersData = [
-    // Usuários Originais
     {
         username: 'jacquetenorio',
         email: 'jacque.tenorio@example.com',
@@ -195,7 +208,6 @@ const usersData = [
         avatar: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dXNlcnxlbnwwfHwwfHx8MA%3D%3D',
         bio: 'Esteticista e dono de uma rede de clínicas. Buscando sempre inovar no mercado da beleza.',
     },
-    // --- Novos Usuários ---
     {
         username: 'andre_silva',
         email: 'andre.silva@example.com',
@@ -214,27 +226,60 @@ const usersData = [
     },
 ];
 
-// --- FUNÇÕES AUXILIARES ---
+const adsData = [
+    {
+        companyName: 'Clínica BelleVie',
+        headline: 'Agende sua harmonização facial conosco!',
+        description: 'Resultados naturais que realçam a sua beleza. Use o código AH15 para 15% de desconto.',
+        mediaUrl: 'https://images.pexels.com/photos/3762873/pexels-photo-3762873.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+        callToAction: {
+            text: 'Saiba Mais',
+            url: 'https://www.instagram.com', // Link de destino do anúncio
+        },
+        status: 'active',
+    },
+    {
+        companyName: 'Dermato Skincare',
+        headline: 'O sérum de Vitamina C que vai revolucionar sua pele.',
+        description: 'Fórmula exclusiva com antioxidantes potentes para uma pele mais iluminada e uniforme.',
+        mediaUrl: 'https://images.pexels.com/photos/4041391/pexels-photo-4041391.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+        callToAction: {
+            text: 'Comprar Agora',
+            url: 'https://www.instagram.com',
+        },
+        status: 'active',
+    },
+    {
+        companyName: 'Estética Avançada Pro',
+        headline: 'Curso de Microagulhamento para Profissionais',
+        description: 'Aprenda a técnica que está transformando o mercado da estética e aumente seu faturamento.',
+        mediaUrl: 'https://images.pexels.com/photos/7176319/pexels-photo-7176319.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+        callToAction: {
+            text: 'Inscreva-se',
+            url: 'https://www.instagram.com',
+        },
+        status: 'active',
+    }
+];
+
 const getRandomSubset = (arr, size) => arr.sort(() => 0.5 - Math.random()).slice(0, size);
 const getRandomElement = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// --- LÓGICA PRINCIPAL DO SEEDER ---
 const importData = async () => {
     try {
         console.log('🚀 Iniciando o processo de seeding...');
 
-        // 1. Limpa o banco de dados
         console.log('🧹 Limpando coleções...');
         await Post.deleteMany();
         await User.deleteMany();
+        await Ad.deleteMany();
         await Chat.deleteMany();
         await Message.deleteMany();
         await Story.deleteMany();
         console.log('✅ Coleções limpas.');
         await sleep(500);
 
-        // 2. Cria os usuários
         const createdUsers = await User.create(usersData);
         console.log(`👤 ${createdUsers.length} usuários criados.`);
         await sleep(500);
@@ -244,22 +289,17 @@ const importData = async () => {
             return acc;
         }, {});
 
-        // 3. Cria a rede de seguidores complexa
         console.log('🕸️ Criando rede de seguidores complexa...');
         const admin = userMap.acelerahof;
         const allUsersExceptAdmin = createdUsers.filter(u => u.id !== admin.id);
 
         for (const user of createdUsers) {
-            // Admin segue todos
             if (user.id === admin.id) {
                 user.following = allUsersExceptAdmin.map(u => u._id);
             } else {
-                // Todos os usuários seguem o admin
                 user.followers.push(admin._id);
-                // Usuários seguem um número aleatório de outros usuários (entre 5 e 15)
                 const usersToFollow = getRandomSubset(allUsersExceptAdmin.filter(u => u.id !== user.id), Math.floor(Math.random() * 11) + 5);
                 user.following.push(...usersToFollow.map(u => u._id));
-                // Atualiza a lista de seguidores dos usuários que foram seguidos
                 for (const followedUser of usersToFollow) {
                     const targetUser = createdUsers.find(u => u.id === followedUser.id);
                     if (targetUser && !targetUser.followers.includes(user._id)) {
@@ -273,11 +313,12 @@ const importData = async () => {
         console.log('✅ Rede de seguidores criada.');
         await sleep(500);
 
-        // 4. Cria posts abundantes e variados
         console.log('📝 Criando posts...');
         const postsData = [
-            // Posts dos usuários originais
             { user: userMap.jacquetenorio._id, caption: 'Dia de spa em casa! Máscara de argila verde para purificar. Quem mais ama? ✨ #skincare #autocuidado', mediaUrl: 'https://images.pexels.com/photos/6621462/pexels-photo-6621462.jpeg?auto=compress&cs=tinysrgb&w=500' },
+            { user: userMap.jacquetenorio._id, caption: 'Dia de spa em casa! Máscara de argila verde para purificar. Quem mais ama? ✨ #skincare #autocuidado', mediaUrl: 'https://images.pexels.com/photos/6621462/pexels-photo-6621462.jpeg?auto=compress&cs=tinysrgb&w=500' },
+            { user: userMap.jacquetenorio._id, caption: 'Dia de spa em casa! Máscara de argila verde para purificar. Quem mais ama? ✨ #skincare #autocuidado', mediaUrl: 'https://images.pexels.com/photos/6621462/pexels-photo-6621462.jpeg?auto=compress&cs=tinysrgb&w=500' },
+            { user: userMap.anaclara._id, caption: 'Resultado da make de hoje! Um esfumado clássico que nunca erra. O que acharam? 💄 #makeup #makeuptutorial', mediaUrl: 'https://images.pexels.com/photos/3762662/pexels-photo-3762662.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.anaclara._id, caption: 'Resultado da make de hoje! Um esfumado clássico que nunca erra. O que acharam? 💄 #makeup #makeuptutorial', mediaUrl: 'https://images.pexels.com/photos/3762662/pexels-photo-3762662.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.nathaliamiotto._id, caption: 'Não se esqueça do protetor solar, mesmo em dias nublados! A prevenção é o melhor tratamento. #dermatologia #sunscreen', mediaUrl: 'https://images.pexels.com/photos/3762870/pexels-photo-3762870.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.emmilly._id, caption: 'Design de sobrancelhas que realça o olhar. Agende seu horário!', mediaUrl: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=500' },
@@ -291,11 +332,8 @@ const importData = async () => {
             { user: userMap.rodrigo_barros._id, caption: 'Visitando nossa nova unidade. Muito orgulhoso do crescimento da nossa equipe e do padrão de qualidade que mantemos. #empreendedorismo #estetica', mediaUrl: 'https://images.pexels.com/photos/8867431/pexels-photo-8867431.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.carolina_fernandes._id, caption: 'Um rosto harmônico muda tudo! Os procedimentos com bioestimuladores de colágeno são seguros e com ótimos resultados. #biomedicinaestetica #harmonizacaofacial', mediaUrl: 'https://images.pexels.com/photos/6529841/pexels-photo-6529841.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.rafael_oliveira._id, caption: 'Antes e depois que fala, né? Corte e finalização impecáveis. Satisfação do cliente é a meta. 💈 #barbershop #hairstyle', mediaUrl: 'https://images.pexels.com/photos/2065195/pexels-photo-2065195.jpeg?auto=compress&cs=tinysrgb&w=500' },
-
-            // Posts dos novos usuários
             { user: userMap.andre_silva._id, caption: 'Sua marca pessoal é o que as pessoas dizem sobre você quando você não está na sala. Vamos construir a sua juntos? #branding #posicionamento', mediaUrl: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.marcelo_campos._id, caption: 'A drenagem linfática no pós-operatório de cirurgias plásticas é essencial para reduzir o inchaço e acelerar a recuperação. #fisioterapiadermatofuncional #posoperatorio', mediaUrl: 'https://images.pexels.com/photos/4506269/pexels-photo-4506269.jpeg?auto=compress&cs=tinysrgb&w=500' },
-            // Mais posts para usuários antigos
             { user: userMap.jacquetenorio._id, caption: 'Sextou com peeling de diamante! Renovação celular para uma pele lisinha e radiante. Quem vem? #peelingdediamante #esteticaavancada', mediaUrl: 'https://images.pexels.com/photos/3783471/pexels-photo-3783471.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.anaclara._id, caption: 'Delineado gráfico para sair do óbvio! Gostam de makes mais ousadas? Me conta aqui! 👀 #graphicliner #makeartistica', mediaUrl: 'https://images.pexels.com/photos/3018845/pexels-photo-3018845.jpeg?auto=compress&cs=tinysrgb&w=500' },
             { user: userMap.nathaliamiotto._id, caption: 'Toxina botulínica preventiva: começar cedo pode evitar a formação de rugas profundas no futuro. Converse com seu dermatologista!', mediaUrl: 'https://images.pexels.com/photos/5215017/pexels-photo-5215017.jpeg?auto=compress&cs=tinysrgb&w=500' },
@@ -307,7 +345,6 @@ const importData = async () => {
         console.log(`✅ ${createdPosts.length} posts criados.`);
         await sleep(500);
 
-        // 5. Adiciona curtidas e comentários com respostas de forma mais intensa
         console.log('💬 Adicionando interações (curtidas e comentários)...');
         const commentsBank = [
             'Que incrível!', 'Amei o resultado!', 'Parabéns pelo trabalho!', 'Preciso disso na minha vida!',
@@ -316,36 +353,38 @@ const importData = async () => {
         ];
 
         for (const post of createdPosts) {
-            // Adiciona um número maior de curtidas aleatórias
+            // Lógica de curtidas
             const likers = getRandomSubset(allUsersExceptAdmin, Math.floor(Math.random() * (allUsersExceptAdmin.length - 5)) + 5);
             post.likes = likers.map(u => u._id);
 
-            // Adiciona comentários e respostas com mais frequência
-            if (Math.random() > 0.3) { // 70% de chance de ter comentários
+            // Lógica de comentários
+            if (Math.random() > 0.3) { 
                 const commenters = getRandomSubset(allUsersExceptAdmin.filter(u => !u._id.equals(post.user)), Math.floor(Math.random() * 8) + 2);
-                for (const commenter of commenters) {
-                    const postAuthorObject = createdUsers.find(u => u._id.equals(post.user));
-                    const comment = { user: commenter._id, text: `${getRandomElement(commentsBank)}`, replies: [] };
+                
+                const createdComments = await Promise.all(commenters.map(commenter => {
+                    return Comment.create({
+                        text: getRandomElement(commentsBank),
+                        author: commenter._id,
+                        post: post._id
+                    });
+                }));
 
-                    // Chance de ter uma resposta do autor do post ou de outro usuário
-                    if (Math.random() > 0.5) { // 50% de chance de ter uma resposta
-                        // 80% de chance da resposta ser do autor, 20% de outro usuário aleatório
-                        const replier = Math.random() < 0.8 ? postAuthorObject : getRandomElement(allUsersExceptAdmin.filter(u => !u._id.equals(commenter._id)));
-
-                        if (replier && postAuthorObject) {
-                            comment.replies.push({ user: replier._id, text: `Obrigada pelo carinho, @${commenter.username}! Fico feliz que tenha gostado! ❤️` });
-                        }
-                    }
-                    post.comments.push(comment);
-                }
+                const commentIds = createdComments.map(c => c._id);
+                post.comments.push(...commentIds);
             }
+            
+            // Salva o post com as curtidas e os IDs dos comentários
             await post.save();
         }
 
         console.log('✅ Interações adicionadas.');
         await sleep(500);
 
-        // 6. Cria mais Stories
+        console.log('📢 Criando anúncios...');
+        await Ad.create(adsData);
+        console.log(`✅ ${adsData.length} anúncios criados.`);
+        await sleep(500);
+
         console.log('🤳 Criando mais stories...');
         const storiesData = [
             { user: userMap.jacquetenorio._id, mediaUrl: 'https://images.pexels.com/photos/4041392/pexels-photo-4041392.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 15 },
@@ -361,7 +400,6 @@ const importData = async () => {
         console.log(`✅ ${storiesData.length} stories criados.`);
         await sleep(500);
 
-        // 7. Simula conversas EXPANDIDAS e PERSONALIZADAS do Admin com TODOS os usuários
         console.log('💬 Criando diálogos expandidos do Admin...');
         const adminDialogues = {
             jacquetenorio: [
@@ -410,13 +448,11 @@ const importData = async () => {
 
         for (const user of allUsersExceptAdmin) {
             const dialogueMessages = adminDialogues[user.username];
-            // Verifica se existe um diálogo definido para o usuário e se ele tem mensagens
             if (dialogueMessages && dialogueMessages.length > 0) {
                 const chat = await Chat.create({ participants: [admin._id, user._id] });
                 let lastMessageId;
 
                 for (const msgData of dialogueMessages) {
-                    // Determina o ID do remetente com base no campo 'sender'
                     const senderId = msgData.sender === 'admin' ? admin._id : user._id;
                     const message = await Message.create({
                         sender: senderId,
@@ -424,7 +460,7 @@ const importData = async () => {
                         chat: chat._id
                     });
                     lastMessageId = message._id;
-                    await sleep(15); // Pequeno delay para simular a digitação
+                    await sleep(15);
                 }
 
                 chat.lastMessage = lastMessageId;
@@ -434,12 +470,10 @@ const importData = async () => {
         console.log(`✅ Conversas expandidas com o admin simuladas.`);
         await sleep(500);
 
-        // 8. Simula conversas complexas entre usuários (LÓGICA CORRIGIDA)
         console.log('💬 Criando chats complexos entre usuários...');
         const userChats = [
-            // Chat 1: Maquiadora e Fotógrafo combinando parceria
             {
-                participants: ['anaclara', 'lucas_santos'], // <<-- CORRIGIDO: Usar usernames como strings
+                participants: ['anaclara', 'lucas_santos'],
                 messages: [
                     { sender: 'anaclara', content: 'Oi Lucas, tudo bem? Admiro muito seu trabalho de fotografia! Que tal fazermos uma parceria para um ensaio com uma make bem conceitual?' },
                     { sender: 'lucas_santos', content: 'Olá Ana! Tudo ótimo! Eu adoraria, seu trabalho com maquiagem é incrível. Tenho algumas ideias de locação que combinariam muito. O que acha?' },
@@ -449,9 +483,8 @@ const importData = async () => {
                     { sender: 'lucas_santos', content: 'Combinado! Te chamo na quinta então. Ansioso por isso!' }
                 ]
             },
-            // Chat 2: Dermatologista e Esteticista trocando informações
             {
-                participants: ['nathaliamiotto', 'jacquetenorio'], // <<-- CORRIGIDO
+                participants: ['nathaliamiotto', 'jacquetenorio'],
                 messages: [
                     { sender: 'jacquetenorio', content: 'Dra. Nathalia, seus posts sobre protetor solar são muito esclarecedores! Tenho uma cliente com melasma, e sempre reforço suas dicas.' },
                     { sender: 'nathaliamiotto', content: 'Oi Jacque! Que ótimo saber disso! A conscientização é o primeiro passo. Você tem usado algum ativo clareador nos seus protocolos?' },
@@ -460,9 +493,8 @@ const importData = async () => {
                     { sender: 'jacquetenorio', content: 'Concordo plenamente! Obrigada pela troca, Dra. ❤️' }
                 ]
             },
-            // Chat 3: Especialista em Posicionamento dando dicas para Designer de Sobrancelhas
             {
-                participants: ['felipe', 'emmilly'], // <<-- CORRIGIDO
+                participants: ['felipe', 'emmilly'],
                 messages: [
                     { sender: 'felipe', content: 'Emmilly, vi seu último post do design, ficou show! Uma dica: que tal fazer um Reels mostrando o processo acelerado? Gera muito engajamento!' },
                     { sender: 'emmilly', content: 'Oi Felipe! Puxa, que ótima ideia! Eu sou meio tímida com vídeos, mas vou tentar. Precisa de algum app específico?' },
@@ -471,9 +503,8 @@ const importData = async () => {
                     { sender: 'felipe', content: 'Imagina! Para isso que estamos aqui na comunidade. Sucesso!' }
                 ]
             },
-            // Chat 4: Biomédica e Fisioterapeuta Dermatofuncional discutindo associação de procedimentos
             {
-                participants: ['carolina_fernandes', 'annaclarabrum'], // <<-- CORRIGIDO
+                participants: ['carolina_fernandes', 'annaclarabrum'],
                 messages: [
                     { sender: 'carolina_fernandes', content: 'Anna, tudo bem? Vi que você trabalha muito com pós-operatório. Tenho uma paciente que vai fazer fios de PDO e queria indicar sessões de drenagem com você.' },
                     { sender: 'annaclarabrum', content: 'Olá, Carolina! Tudo ótimo! Seria um prazer atendê-la. A drenagem após os fios ajuda muito a diminuir o edema e otimizar os resultados. Quando será o procedimento?' },
@@ -486,9 +517,7 @@ const importData = async () => {
         ];
 
         for (const chatData of userChats) {
-            // CORREÇÃO: Mapeia os usernames (strings) para os objetos de usuário completos
             const participantObjects = chatData.participants.map(username => userMap[username]);
-            // Garante que todos os participantes foram encontrados antes de criar o chat
             if (participantObjects.every(p => p)) {
                 const chat = await Chat.create({ participants: participantObjects.map(p => p._id) });
                 let lastMessageId;
@@ -519,7 +548,6 @@ const importData = async () => {
     }
 };
 
-// --- FUNÇÃO PARA DESTRUIR DADOS ---
 const destroyData = async () => {
     try {
         console.log('🔥 Destruindo todos os dados...');
@@ -536,7 +564,6 @@ const destroyData = async () => {
     }
 };
 
-// --- EXECUÇÃO DO SCRIPT ---
 if (process.argv[2] === '-d') {
     destroyData();
 } else {

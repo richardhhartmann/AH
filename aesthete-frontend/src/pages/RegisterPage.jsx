@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { register, reset } from '../features/auth/authSlice';
 import styled from 'styled-components';
+import logoImage from '../assets/images/logo.png';
 
 // --- Estilos (Reaproveitados e adaptados da LoginPage) ---
 
@@ -32,10 +33,12 @@ const FormWrapper = styled.div`
   text-align: center;
 `;
 
-const Logo = styled.h1`
-  font-family: 'Grand Hotel', cursive; // Certifique-se de importar esta fonte no seu index.html ou App.css
-  font-size: 3.5rem;
-  margin-bottom: 10px;
+const Logo = styled(Link)`
+  img {
+    height: 70px;
+    vertical-align: middle;
+    margin-bottom: 35px;
+  }
 `;
 
 const Subheading = styled.p`
@@ -152,7 +155,9 @@ const RegisterPage = () => {
         <RegisterContainer>
             <Wrapper>
                 <FormWrapper>
-                    <Logo>Ah</Logo>
+                    <Logo>
+                      <img src={logoImage} alt="Aesthete Logo" />
+                    </Logo>
                     <Subheading>
                         Cadastre-se para acelerar sua carreira na HOF.
                     </Subheading>

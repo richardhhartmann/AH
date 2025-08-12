@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import styled from 'styled-components';
 
 // Componentes e Páginas
 import Navbar from './components/Navbar';
@@ -20,13 +21,21 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import NotificationPage from './pages/NotificationPage';
 
+const MainContainer = styled.main`
+  /* Em telas mobile, adiciona o espaçamento para o header e footer fixos */
+  @media (max-width: 768px) {
+    padding-top: 60px;    /* Espaço para o header fixo */
+    padding-bottom: 60px; /* Espaço para o footer fixo */
+  }
+`;
+
 function App() {
   const { user: loggedInUser } = useSelector((state) => state.auth);
 
-  return (
+return (
     <Router>
       <Navbar />
-      <main>
+      <MainContainer>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/pesquisar" element={<SearchPage />} />
@@ -47,7 +56,7 @@ function App() {
           <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
           <Route path="/redefinir-senha/:resettoken" element={<ResetPasswordPage />} />
         </Routes>
-      </main>
+        </MainContainer>
       {loggedInUser && <MobileFooter />}
     </Router>
   );

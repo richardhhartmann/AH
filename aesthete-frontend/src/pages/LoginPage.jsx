@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { login, reset } from '../features/auth/authSlice';
 import styled from 'styled-components';
+import logoImage from '../assets/images/logo.png';
 
 // --- Estilos ---
 const LoginContainer = styled.div`
@@ -22,10 +23,12 @@ const FormWrapper = styled.div`
   text-align: center;
 `;
 
-const Logo = styled.h1`
-  font-family: 'Grand Hotel', cursive;
-  font-size: 3.5rem;
-  margin-bottom: 25px;
+const Logo = styled(Link)`
+  img {
+    height: 70px;
+    vertical-align: middle;
+    margin-bottom: 35px;
+  }
 `;
 
 const StyledForm = styled.form`
@@ -129,7 +132,9 @@ const LoginPage = () => {
     return (
         <LoginContainer>
             <FormWrapper>
-                <Logo>Ah</Logo>
+                <Logo>
+                    <img src={logoImage} alt="Aesthete Logo" />
+                </Logo>
                 <StyledForm onSubmit={onSubmit}>
                     <StyledInput
                         type="text" // ANTES: type="email"

@@ -7,7 +7,7 @@ import Modal from '../components/Modal';
 import FullscreenStoryViewer from '../components/FullscreenStoryViewer';
 import { BsChat } from "react-icons/bs";
 
-// --- Styled Components (com Media Queries para Mobile) ---
+// --- Styled Components (sem alterações) ---
 
 const ProfileWrapper = styled.div`
   max-width: 935px;
@@ -19,25 +19,24 @@ const ProfileWrapper = styled.div`
 `;
 
 const MobileChatButton = styled.button`
-    // Escondido por padrão, aparecerá via lógica no JSX
     display: flex;
     align-items: center;
     justify-content: center;
-    position: absolute; /* Chave para o posicionamento */
-    top: -15px;          /* Distância do topo do contêiner */
-    right: 5px;         /* Distância da direita do contêiner */
-    width: 48px;        /* Tamanho maior */
-    height: 48px;       /* Tamanho maior */
+    position: absolute;
+    top: -15px;
+    right: 5px;
+    width: 48px;
+    height: 48px;
     background-color: rgb(254, 121, 13);
     color: white;
-    border-radius: 50%; /* Deixa o botão redondo */
+    border-radius: 50%;
     border: none;
     cursor: pointer;
-    z-index: 10;        /* Garante que fique sobre outros elementos */
+    z-index: 10;
     transition: background-color 0.2s ease;
 
     &:hover {
-        background-color: rgb(224, 101, 0); /* Cor um pouco mais escura no hover */
+        background-color: rgb(224, 101, 0);
     }
 `;
 
@@ -101,6 +100,11 @@ const UsernameRow = styled.div`
     font-weight: 300;
     margin-right: 20px;
   }
+    p {
+    font-size: 22px;
+    font-weight: 300;
+    margin-right: 20px;
+    }
   @media (max-width: 768px) {
     margin-bottom: 10px;
     h2 { font-size: 22px; }
@@ -121,20 +125,20 @@ const ActionButton = styled.button`
     }
 
     @media (max-width: 768px) {
-            display: none;
-        }    
+        display: none;
+    }    
 `;
 
 const ActionButtonMobile = styled.button`
-width: 100%;                  // ocupa toda a largura disponível
-  max-width: 500px;             // limite opcional para não estourar em telas grandes
-  margin: 0 auto;               // centraliza horizontalmente
-  display: block;              // necessário para centralizar com margin
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  display: block;
   padding: 12px 24px;
   border: 1px solid #fe790d;
-  border-radius: 999px;         // super arredondado
-  background-color: #fff4ec;    // laranja claro
-  color: #fe790d;               // mesma cor da borda
+  border-radius: 999px;
+  background-color: #fff4ec;
+  color: #fe790d;
   font-size: 1rem;
   text-align: center;
   cursor: pointer;
@@ -142,7 +146,7 @@ width: 100%;                  // ocupa toda a largura disponível
   transition: all 0.2s ease;
 
   &:hover {
-    background-color: #ffe3cc;  // cor um pouco mais escura no hover
+    background-color: #ffe3cc;
   }
 
   &.primary {
@@ -151,7 +155,6 @@ width: 100%;                  // ocupa toda a largura disponível
     border: none;
   }
 `;
-
 
 const ChatButton = styled(ActionButton)`
     background-color: rgb(254, 121, 13);
@@ -162,12 +165,12 @@ const ChatButton = styled(ActionButton)`
     justify-content: center;
 
     @media (max-width: 768px) {
-            display: none;
-        }
+        display: none;
+    }
 `;
 
 const BioAndProfessionContainer = styled.div`
-    position: relative; /* << ADICIONE ESTA LINHA */
+    position: relative;
     display: block;
     @media (max-width: 768px) {
         margin-top: 20px;
@@ -189,8 +192,8 @@ const Bio = styled.div`
 `;
 
 const Profession = styled.p`
-padding-top: 5px;  
-padding-bottom: 3px;
+  padding-top: 5px;  
+  padding-bottom: 3px;
   font-size: 0.9rem;
   font-weight: 600;
   color: #f58529;
@@ -212,7 +215,6 @@ const StatsRow = styled.div`
     justify-content: space-around;
     width: 100%;
     padding: 12px 0;
-    
     margin-top: 24px;
     margin-bottom: 0;
     order: 1;
@@ -245,7 +247,7 @@ const StatsRowMobile = styled.div`
 
     strong {
       color: rgb(254, 121, 13);
-      margin-right: 4px; /* <-- Espaço entre número e texto */
+      margin-right: 4px;
       font-weight: 600;
     }
   }
@@ -274,7 +276,6 @@ const StatsRowMobile = styled.div`
             font-weight: normal;
         }
     }
-
   }
 
   p.clickable {
@@ -284,8 +285,6 @@ const StatsRowMobile = styled.div`
     }
   }
 `;
-
-
 
 const PostGrid = styled.div`
   display: grid;
@@ -371,9 +370,7 @@ const ProfilePage = () => {
         if (!profileData) return;
         try {
             const { data } = await api.post('/chats', { userId: profileData.user._id });
-            
             navigate(`/chat/${data._id}`); 
-            
         } catch (error) {
             console.error("Erro ao iniciar chat", error);
         }
@@ -451,12 +448,8 @@ const ProfilePage = () => {
                     </AvatarContainer>
                     <ProfileInfo>
                         <UsernameRow>
-                            {/* Este h2 é visível em ambos */}
-                            
-                            {/* ======================================================= */}
-                            {/* <<< AQUI: Botões visíveis apenas em DESKTOP ( > 768px) */}
-                            {/* ======================================================= */}
-                            <DesktopOnly style={{ display: 'flex', gap: '10px' }}>
+                            <p>{user.username}</p>
+                             <DesktopOnly style={{ display: 'flex', gap: '10px' }}>
                                 {isMyProfile ? (
                                     <ActionButton as={Link} to="/conta/editar">Editar Perfil</ActionButton>
                                 ) : (
@@ -470,10 +463,8 @@ const ProfilePage = () => {
                                     </>
                                 )}
                             </DesktopOnly>
-
                         </UsernameRow>
 
-                        {/* Informações que também são só para Desktop */}
                         <DesktopOnly>
                             <StatsRow>
                                 <p><strong>{postCount}</strong> publicações</p>
@@ -486,11 +477,9 @@ const ProfilePage = () => {
                             </StatsRow>
                             <BioAndProfessionContainer>
                                 <Bio>
-                                    <p>{user.username}</p>
                                     {user.profession && <Profession>{user.profession}</Profession>}
                                     <span>{user.bio}</span>
                                 </Bio>
-
                             </BioAndProfessionContainer>
                         </DesktopOnly>
                     </ProfileInfo>
@@ -515,7 +504,6 @@ const ProfilePage = () => {
                                     <strong>{followingCount}</strong><span className="label">seguindo</span>
                                 </p>
                                 </StatsRowMobile>
-
                             <span>{user.bio}</span>
                         </Bio>
                     </BioAndProfessionContainer>
@@ -529,7 +517,6 @@ const ProfilePage = () => {
                                 </ActionButtonMobile>
                         )}
                     </div>
-
                 </MobileOnly>
             </ProfileHeader>
 
@@ -564,10 +551,14 @@ const ProfilePage = () => {
                     <p style={{ padding: '10px' }}>Nenhum usuário encontrado.</p>
                 )}
             </Modal>
-
+            
+            {/* ================================================ */}
+            {/* <<< AQUI ESTÁ A CORREÇÃO >>> */}
+            {/* ================================================ */}
             {isViewerOpen && userActiveStories && (
                 <FullscreenStoryViewer 
-                    userStories={userActiveStories} 
+                    allUsersStories={userActiveStories} // Prop correta: allUsersStories
+                    initialUserIndex={0}                 // Prop correta: o índice é 0, pois é o primeiro (e único) usuário no array
                     onClose={() => setIsViewerOpen(false)} 
                 />
             )}

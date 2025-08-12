@@ -34,6 +34,7 @@ const StyledTextarea = styled.textarea`
 
 const StyledInput = styled.input`
     width: 100%;
+    margin-top: 50px;
     margin-bottom: 15px;
 `;
 
@@ -106,7 +107,6 @@ const NewStoryPage = () => {
             // 4. Envia a requisição POST para a API do backend
             await axios.post(`${ENDPOINT}/api/stories`, formData, config);
 
-            alert('Post criado com sucesso!');
             navigate('/'); // Redireciona para o feed após o sucesso
 
         } catch (error) {
@@ -117,13 +117,8 @@ const NewStoryPage = () => {
 
     return (
         <FormContainer>
-            <h2>Criar Nova Publicação</h2>
+            <h2>Postar Story</h2>
             <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-                <StyledTextarea
-                    value={caption}
-                    onChange={(e) => setCaption(e.target.value)}
-                    placeholder="Escreva uma legenda..."
-                />
                 <StyledInput type="file" name="media" onChange={handleFileChange} required />
                 <StyledButton type="submit">Publicar</StyledButton>
                 {preview && <ImagePreview src={preview} alt="Pré-visualização" />}

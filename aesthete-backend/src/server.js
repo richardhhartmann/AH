@@ -1,10 +1,11 @@
-// aesthete-backend/src/server.js (VERSÃO CORRIGIDA)
+// aesthete-backend/src/server.js 
 
 const express = require('express');
 const http = require('http');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
+const adRoutes = require('./routes/adRoutes');
 
 // Configure o dotenv PRIMEIRO
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -58,6 +59,7 @@ app.use('/api/stories', storyRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/ads', adRoutes);
 
 // Configuração do Servidor
 const PORT = process.env.PORT || 10000;

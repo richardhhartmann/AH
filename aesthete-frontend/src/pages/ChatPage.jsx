@@ -13,7 +13,7 @@ import AudioPlayer from '../components/AudioPlayer';
 // --- Styled Components ---
 const ChatContainer = styled.div`
   display: flex;
-  height: calc(100vh - 61px); /* Subtrai a altura da Navbar */
+  height: calc(90vh - 61px); /* Subtrai a altura da Navbar */
   max-width: 935px;
   margin: 0 auto;
   border: 1px solid #dbdbdb;
@@ -421,6 +421,12 @@ const ChatPage = () => {
         }
     };
 
+    const truncateText = (text, maxLength) => {
+        if (!text) return '';
+        if (text.length <= maxLength) return text;
+        return text.slice(0, maxLength) + '...';
+        };
+
     const formatTime = (timeInSeconds) => {
         if (!timeInSeconds) return "0:00";
         const minutes = Math.floor(timeInSeconds / 60);
@@ -448,7 +454,7 @@ const ChatPage = () => {
                                 {isUserOnline && <OnlineIndicator />}
                             </AvatarWrapper>
                             <ChatInfo>
-                                <strong>{otherUser.username}</strong>
+                                {otherUser.username}
                                 {isChatTyping ? (
                                     <TypingIndicator>digitando...</TypingIndicator>
                                 ) : (
@@ -460,15 +466,15 @@ const ChatPage = () => {
                                         {chat.lastMessage ? (
                                             chat.lastMessage.contentType === 'audio' ? (
                                                 <>
-                                                    <FaMicrophone size={14} />
-                                                    <span>Mensagem de voz ({formatTime(chat.lastMessage.audioDuration)})</span>
+                                                <FaMicrophone size={14} />
+                                                <span>Mensagem de voz ({formatTime(chat.lastMessage.audioDuration)})</span>
                                                 </>
                                             ) : (
-                                                chat.lastMessage.content
+                                                truncateText(chat.lastMessage.content, 25)
                                             )
-                                        ) : (
+                                            ) : (
                                             'Inicie a conversa'
-                                        )}
+                                            )}
                                     </LastMessage>
                                 )}
                             </ChatInfo>
@@ -485,7 +491,6 @@ const ChatPage = () => {
                             <BackButton onClick={() => setSelectedChat(null)}>
                                 <IoArrowBack />
                             </BackButton>
-                            {/* MODIFICAÇÃO: O Link agora envolve o avatar e o nome */}
                             <Link to={`/perfil/${getOtherUser(selectedChat).username}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'inherit' }}>
                                 <HeaderAvatar src={getOtherUser(selectedChat).avatar?.startsWith('http') ? getOtherUser(selectedChat).avatar : `${API_URL}${getOtherUser(selectedChat).avatar}`} />
                                 <span>{getOtherUser(selectedChat).username}</span>
