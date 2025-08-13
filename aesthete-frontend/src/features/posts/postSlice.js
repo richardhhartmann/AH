@@ -97,64 +97,72 @@ const postSlice = createSlice({
         }
     },
     extraReducers: (builder) => {
-        builder
-            // Casos para o feed "Seguindo"
-            .addCase(fetchFeedPosts.pending, (state) => { state.feedStatus = 'loading'; })
-            .addCase(fetchFeedPosts.fulfilled, (state, action) => {
-                // Se for a primeira página, substitui. Senão, adiciona.
-                if (action.meta.arg.page === 1) {
-                    state.feedPosts = action.payload.posts;
-                } else {
-                    state.feedPosts.push(...action.payload.posts);
-                }
-                state.feedHasMore = state.feedPosts.length < action.payload.totalPosts;
-                state.feedPage = action.payload.currentPage + 1;
-                state.feedStatus = 'succeeded';
-            })
-            .addCase(fetchFeedPosts.rejected, (state, action) => {
-                state.feedStatus = 'failed';
-                state.error = action.payload;
-            })
+    builder
+        // Casos para o feed "Seguindo"
+        .addCase(fetchFeedPosts.pending, (state) => { state.feedStatus = 'loading'; })
+        .addCase(fetchFeedPosts.fulfilled, (state, action) => {
+            if (action.meta.arg.page === 1) {
+                state.feedPosts = action.payload.posts;
+            } else {
+                state.feedPosts.push(...action.payload.posts);
+            }
+            state.feedHasMore = state.feedPosts.length < action.payload.totalPosts;
+            state.feedPage = action.payload.currentPage + 1;
+            state.feedStatus = 'succeeded';
+        })
+        .addCase(fetchFeedPosts.rejected, (state, action) => {
+            state.feedStatus = 'failed';
+            state.error = action.payload;
+        })
 
-            // NOVOS: Casos para o feed "Explorar"
-            .addCase(fetchExplorePosts.pending, (state) => { state.exploreStatus = 'loading'; })
-            .addCase(fetchExplorePosts.fulfilled, (state, action) => {
-                if (action.meta.arg.page === 1) {
-                    state.explorePosts = action.payload.posts;
-                } else {
-                    state.explorePosts.push(...action.payload.posts);
-                }
-                state.exploreHasMore = state.explorePosts.length < action.payload.totalPosts;
-                state.explorePage = action.payload.currentPage + 1;
-                state.exploreStatus = 'succeeded';
-            })
-            .addCase(fetchExplorePosts.rejected, (state, action) => {
-                state.exploreStatus = 'failed';
-                state.error = action.payload;
-            })
+        // Casos para o feed "Explorar"
+        .addCase(fetchExplorePosts.pending, (state) => { state.exploreStatus = 'loading'; })
+        .addCase(fetchExplorePosts.fulfilled, (state, action) => {
+            if (action.meta.arg.page === 1) {
+                state.explorePosts = action.payload.posts;
+            } else {
+                state.explorePosts.push(...action.payload.posts);
+            }
+            state.exploreHasMore = state.explorePosts.length < action.payload.totalPosts;
+            state.explorePage = action.payload.currentPage + 1;
+            state.exploreStatus = 'succeeded';
+        })
+        .addCase(fetchExplorePosts.rejected, (state, action) => {
+            state.exploreStatus = 'failed';
+            state.error = action.payload;
+        })
 
-            // Caso para deletar o post de ambos os feeds, se existir
-            .addCase(deletePost.fulfilled, (state, action) => {
-                state.feedPosts = state.feedPosts.filter(p => p._id !== action.payload.id);
-                state.explorePosts = state.explorePosts.filter(p => p._id !== action.payload.id);
-            })
-            
-            .addCase(likePost.fulfilled, (state, action) => {
-                // 1. Adicione uma verificação para garantir que o payload existe
-                if (!action.payload) {
-                    return; // Sai do redutor se a resposta da API for vazia
-                }
+        // Caso para deletar o post de ambos os feeds
+        .addCase(deletePost.fulfilled, (state, action) => {
+            state.feedPosts = state.feedPosts.filter(p => p._id !== action.payload.id);
+            state.explorePosts = state.explorePosts.filter(p => p._id !== action.payload.id);
+        })
+        
+        .addCase(likePost.fulfilled, (state, action) => {
+            if (!action.payload?._id) {
+                return; // Sai se o payload ou o ID do post não for válido
+            }
 
-                const updatedPost = action.payload;
-                const postIndex = state.posts.findIndex(post => post._id === updatedPost._id);
+            const updatedPost = action.payload;
 
-                // 2. Verifique se o post foi encontrado no estado
-                if (postIndex !== -1) {
-                    // 3. A SOLUÇÃO: Use `|| []` para garantir que a propriedade seja sempre um array
-                    state.posts[postIndex].likes = updatedPost.likes || [];
-                    state.posts[postIndex].comments = updatedPost.comments || []; // É uma boa prática fazer para todas as listas
-                }
-                });
+            // Tenta encontrar e atualizar o post no feed "Seguindo"
+            const feedPostIndex = state.feedPosts.findIndex(post => post._id === updatedPost._id);
+            if (feedPostIndex !== -1) {
+                state.feedPosts[feedPostIndex] = {
+                    ...state.feedPosts[feedPostIndex],
+                    ...updatedPost // Atualiza o post com os novos dados (ex: array de likes)
+                };
+            }
+
+            // Tenta encontrar e atualizar o post no feed "Explorar"
+            const explorePostIndex = state.explorePosts.findIndex(post => post._id === updatedPost._id);
+            if (explorePostIndex !== -1) {
+                state.explorePosts[explorePostIndex] = {
+                    ...state.explorePosts[explorePostIndex],
+                    ...updatedPost // Atualiza o post com os novos dados
+                };
+            }
+        });
     },
 });
 
