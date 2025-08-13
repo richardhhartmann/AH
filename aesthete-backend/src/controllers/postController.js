@@ -54,7 +54,7 @@ exports.getFeedPosts = async (req, res) => {
 
         const totalPosts = await Post.countDocuments({ user: { $in: userIds } });
         const posts = await Post.find({ user: { $in: userIds } })
-            .populate('user', 'username avatar')
+            .populate('user', 'username avatar profession') 
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -123,8 +123,8 @@ exports.likePost = async (req, res) => {
 exports.getPostById = async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
-            .populate('user', 'username avatar') // Popula o autor do post
-            .populate({ // Popula os comentários e os autores dos comentários
+        .populate('user', 'username avatar profession') // Adicione 'profession' aqui
+        .populate({ // Popula os comentários e os autores dos comentários
                 path: 'comments',
                 populate: {
                     path: 'author',
@@ -245,7 +245,7 @@ exports.getExploreFeed = async (req, res) => {
 
         const totalPosts = await Post.countDocuments({ user: { $nin: usersToExclude } });
         const posts = await Post.find({ user: { $nin: usersToExclude } })
-            .populate('user', 'username avatar')
+            .populate('user', 'username avatar profession')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)

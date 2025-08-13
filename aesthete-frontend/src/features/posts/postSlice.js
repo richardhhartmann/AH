@@ -1,6 +1,7 @@
 // src/features/posts/postSlice.js
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import postService from './postService'; // Certifique-se de que o caminho está correto
 import api from '../../api/axios';
 
 // Thunk para o feed "Seguindo"
@@ -56,6 +57,26 @@ const initialState = {
 
     error: null,
 };
+
+export const likePost = createAsyncThunk(
+  'posts/like', // Nome da ação para o Redux DevTools
+  async (postId, thunkAPI) => {
+    try {
+      // Pega o token do usuário do estado global
+      const token = thunkAPI.getState().auth.user.token;
+      // Chama a função do seu serviço que faz a requisição à API
+      return await postService.likePost(postId, token);
+    } catch (error) {
+      const message =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
 
 const postSlice = createSlice({
     name: 'posts',
@@ -116,7 +137,24 @@ const postSlice = createSlice({
             .addCase(deletePost.fulfilled, (state, action) => {
                 state.feedPosts = state.feedPosts.filter(p => p._id !== action.payload.id);
                 state.explorePosts = state.explorePosts.filter(p => p._id !== action.payload.id);
-            });
+            })
+            
+            .addCase(likePost.fulfilled, (state, action) => {
+                // 1. Adicione uma verificação para garantir que o payload existe
+                if (!action.payload) {
+                    return; // Sai do redutor se a resposta da API for vazia
+                }
+
+                const updatedPost = action.payload;
+                const postIndex = state.posts.findIndex(post => post._id === updatedPost._id);
+
+                // 2. Verifique se o post foi encontrado no estado
+                if (postIndex !== -1) {
+                    // 3. A SOLUÇÃO: Use `|| []` para garantir que a propriedade seja sempre um array
+                    state.posts[postIndex].likes = updatedPost.likes || [];
+                    state.posts[postIndex].comments = updatedPost.comments || []; // É uma boa prática fazer para todas as listas
+                }
+                });
     },
 });
 

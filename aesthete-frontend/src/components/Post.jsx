@@ -1,98 +1,29 @@
-import styled from 'styled-components';
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
 import useMediaQuery from '../hooks/useMediaQuery';
 import { usePostActions } from '../hooks/usePostActions';
 import { API_URL } from '../api/axios';
-import { CommentIcon, HeartIcon, LikedIcon } from './Icons'; // Supondo um arquivo de ícones
-import * as S from './Post.styles'; // Importa todos os styled-components com um alias
-
-export const PostContainer = styled.div`
-    background-color: #fff;
-    border: 1px solid #dbdbdb;
-    border-radius: 8px;
-    margin-bottom: 24px;
-    max-width: 615px;
-`;
-
-export const PostHeader = styled.div`
-    display: flex;
-    align-items: center;
-    padding: 14px 16px;
-    
-    img {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        margin-right: 14px;
-        object-fit: cover;
-    }
-    
-    strong {
-        font-size: 0.9rem;
-    }
-`;
-
-export const DeleteButton = styled.button`
-    background: none;
-    border: none;
-    color: #ed4956;
-    font-weight: bold;
-    cursor: pointer;
-    margin-left: auto;
-    font-size: 0.9rem;
-`;
-
-export const PostImage = styled.img`
-    width: 100%;
-    height: auto;
-    object-fit: cover;
-    border-top: 1px solid #dbdbdb;
-    border-bottom: 1px solid #dbdbdb;
-    cursor: pointer;
-`;
-
-export const PostActions = styled.div`
-    padding: 8px 16px;
-    
-    button {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 8px;
-        margin-right: 8px;
-    }
-    
-    svg {
-        width: 24px;
-        height: 24px;
-    }
-`;
-
-export const PostFooter = styled.div`
-    padding: 0 16px 16px;
-    font-size: 0.85rem;
-    
-    p {
-        margin: 0 0 4px;
-        line-height: 1.4;
-    }
-    
-    strong {
-        cursor: pointer;
-    }
-
-    span {
-        color: #8e8e8e;
-        font-size: 0.8rem;
-        cursor: pointer;
-    }
-`;
+import { CommentIcon, HeartIcon, LikedIcon } from './Icons'; // Verifique se o caminho dos ícones está correto
+import { PiChats } from "react-icons/pi";
+import * as S from './Post.styles';
 
 // Função auxiliar para construir URLs de imagem de forma segura
 const getImageUrl = (url) => {
-    if (!url) return ''; // Retorna string vazia se a URL for nula/indefinida
+    if (!url) return '';
     return url.startsWith('http') ? url : `${API_URL}${url}`;
+};
+
+// Função para formatar o tempo relativo
+const formatTimestamp = (date) => {
+    try {
+        return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
+    } catch (error) {
+        console.error("Data inválida para formatação:", date);
+        return null;
+    }
 };
 
 const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComments }, ref) => {
@@ -115,7 +46,9 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
         }
     };
 
-    if (!post || !post.user) return null; // Verificação de segurança
+    if (!post || !post.user) return null;
+
+    const formattedTimestamp = formatTimestamp(post.createdAt)?.replace('cerca de ', '');
 
     return (
         <S.PostContainer ref={ref}>
@@ -123,10 +56,28 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
                 <Link to={`/perfil/${post.user.username}`}>
                     <img src={getImageUrl(post.user.avatar)} alt={`${post.user.username}'s avatar`} />
                 </Link>
-                <Link to={`/perfil/${post.user.username}`}>
-                    <strong>{post.user.username}</strong>
-                </Link>
-                {isMyPost && <S.DeleteButton onClick={handleDelete}>Deletar</S.DeleteButton>}
+                <S.UserInfoContainer>
+                    <Link to={`/perfil/${post.user.username}`}>
+                        <strong>{post.user.username}</strong>
+                    </Link>
+                    {/* Exibe o cargo do usuário se existir */}
+                    {post.user.profession && <S.UserRole>{post.user.profession}</S.UserRole>}
+                    {/* Exibe o timestamp se a data for válida */}
+                    {formattedTimestamp && <S.Timestamp>{formattedTimestamp}</S.Timestamp>}
+                </S.UserInfoContainer>
+                
+                {/* 2. Adicione o container com a lógica para os botões */}
+                <S.HeaderActionsContainer>
+                    {/* O botão de chat só aparece se o post NÃO for seu */}
+                    {!isMyPost && (
+                        <S.ChatButton to={`/chat/${post.user._id}`} title={`Conversar com ${post.user.username}`}>
+                            <PiChats />
+                        </S.ChatButton>
+                    )}
+
+                    {/* O botão de deletar só aparece se o post FOR seu */}
+                    {isMyPost && <S.DeleteButton onClick={handleDelete}>Deletar</S.DeleteButton>}
+                </S.HeaderActionsContainer>
             </S.PostHeader>
 
             <S.PostImage
@@ -136,27 +87,34 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
             />
             
             <S.PostActions>
-                <button onClick={handleLike} aria-label={isLikedByMe ? "Descurtir" : "Curtir"}>
-                    {isLikedByMe ? <LikedIcon /> : <HeartIcon />}
-                </button>
-                <button onClick={handleCommentAction} aria-label="Comentar">
-                    <CommentIcon />
-                </button>
+                {/* Container para o botão de like e seu contador */}
+                <S.ActionButtonContainer>
+                    <button onClick={handleLike} aria-label={isLikedByMe ? "Descurtir" : "Curtir"}>
+                        {isLikedByMe ? <LikedIcon /> : <HeartIcon />}
+                    </button>
+                    {post.likes.length > 0 && (
+                        <S.CounterBadge>{post.likes.length}</S.CounterBadge>
+                    )}
+                </S.ActionButtonContainer>
+                
+                {/* Container para o botão de comentário e seu contador */}
+                <S.ActionButtonContainer>
+                    <button onClick={handleCommentAction} aria-label="Comentar">
+                        <CommentIcon />
+                    </button>
+                    {post.comments?.length > 0 && (
+                         <S.CounterBadge>{post.comments.length}</S.CounterBadge>
+                    )}
+                </S.ActionButtonContainer>
             </S.PostActions>
 
             <S.PostFooter>
-                <p><strong>{post.likes.length} curtidas</strong></p>
                 <p>
                     <Link to={`/perfil/${post.user.username}`}>
                         <strong>{post.user.username}</strong>
                     </Link>
                     {' '}{post.caption}
                 </p>
-                {post.comments?.length > 0 && (
-                    <span onClick={handleCommentAction}>
-                        Ver todos os {post.comments.length} comentários
-                    </span>
-                )}
             </S.PostFooter>
         </S.PostContainer>
     );

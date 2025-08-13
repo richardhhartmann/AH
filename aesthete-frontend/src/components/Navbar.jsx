@@ -604,7 +604,10 @@ const Navbar = () => {
                                             to={getNotificationLink(notif)}
                                             onClick={() => setIsDropdownOpen(false)}
                                         >
-                                            <img src={notif.sender.avatar.startsWith('http') ? notif.sender.avatar : `${API_URL}${notif.sender.avatar}`} alt={notif.sender.username} />
+                                            <img 
+                                                src={notif?.sender?.avatar?.startsWith('http') ? notif.sender.avatar : `${API_URL}${notif?.sender?.avatar || '../images/default.png'}`} 
+                                                alt={notif?.sender?.username || 'Usuário'} 
+                                            />
                                             <p>
                                                 <strong>{notif.sender.username}</strong>
                                                 {' '}{getNotificationText(notif)}
@@ -693,7 +696,10 @@ const Navbar = () => {
                                   to={getNotificationLink(notif)}
                                   onClick={() => setIsDropdownOpen(false)}
                               >
-                                  <img src={notif.sender.avatar.startsWith('http') ? notif.sender.avatar : `${API_URL}${notif.sender.avatar}`} alt={notif.sender.username} />
+                                  <img 
+                                      src={notif?.sender?.avatar?.startsWith('http') ? notif.sender.avatar : `${API_URL}${notif?.sender?.avatar || '../images/default.png'}`} 
+                                      alt={notif?.sender?.username || 'Usuário'}
+                                  />
                                   <p>
                                       <strong>{notif.sender.username}</strong>
                                       {' '}{getNotificationText(notif)}
