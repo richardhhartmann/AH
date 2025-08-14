@@ -13,13 +13,13 @@ import { FaHeart, FaRegHeart } from 'react-icons/fa'; // Ícones de coração
 const PageContainer = styled.div`
   display: flex;
   justify-content: center;
-  align-items: center; /* Adicionado para melhor alinhamento vertical no desktop */
+  align-items: center;
   padding: 20px;
   background-color: #fafafa;
 
   @media (max-width: 768px) {
     padding: 0;
-    min-height: 100vh; 
+    min-height: calc(100vh - 120px); /* Altura da tela menos header e footer */
     align-items: flex-start;
   }
 `;

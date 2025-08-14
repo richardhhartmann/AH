@@ -23,7 +23,6 @@ const FeedSelector = styled.div`
   position: relative;
   display: flex;
   justify-content: center;
-  border-bottom: 1px solid #dbdbdb;
   margin-bottom: 24px;
   gap: 6px;
   width: 100%;
@@ -33,8 +32,7 @@ const FeedTab = styled.button.attrs(() => ({ type: 'button' }))`
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: bold;
+  font-size: 0.9rem;
   padding: 10px 0;
   color: ${props => (props.isActive ? '#262626' : '#8e8e8e')};
   position: relative;
@@ -58,7 +56,7 @@ const FeedTab = styled.button.attrs(() => ({ type: 'button' }))`
 
 
 const HomePage = () => {
-  const [feedType, setFeedType] = useState('following'); // Controla qual feed exibir
+  const [feedType, setFeedType] = useState('explore'); // Controla qual feed exibir
 
   return (
     <HomeContainer>
@@ -70,16 +68,16 @@ const HomePage = () => {
         {/* Seletor de Abas (Seguindo / Explorar) */}
         <FeedSelector>
           <FeedTab
-            isActive={feedType === 'following'}
-            onClick={() => setFeedType('following')}
-          >
-            Seguindo
-          </FeedTab>
-          <FeedTab
             isActive={feedType === 'explore'}
             onClick={() => setFeedType('explore')}
           >
             Explorar
+          </FeedTab>
+          <FeedTab
+            isActive={feedType === 'following'}
+            onClick={() => setFeedType('following')}
+          >
+            Seguindo
           </FeedTab>
         </FeedSelector>
 

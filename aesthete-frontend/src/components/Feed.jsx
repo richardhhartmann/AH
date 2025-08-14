@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchFeedPosts, resetFeed } from '../features/posts/postSlice';
 import Post from './Post';
 import Spinner from './common/Spinner';
+import CommentsModal from './CommentsModal'; // Importar o modal
 
 const EmptyFeedMessage = () => (
     <div style={{ textAlign: 'center', color: '#8e8e8e', marginTop: '50px' }}>
@@ -13,6 +14,7 @@ const EmptyFeedMessage = () => (
 
 const Feed = () => {
     const dispatch = useDispatch();
+    const [commentModalPostId, setCommentModalPostId] = useState(null); // Estado para o modal
 
     const { 
         feedPosts, 
@@ -39,45 +41,53 @@ const Feed = () => {
     }, [status, hasMore, dispatch, page]);
 
     useEffect(() => {
-        // Apenas busca os dados se o feed estiver no estado inicial
         if (status === 'idle') {
             dispatch(fetchFeedPosts({ page: 1, limit: 5 }));
         }
         return () => {
             dispatch(resetFeed());
         };
-    }, [dispatch]); // Removido 'status' para evitar re-fetches indesejados
+    }, [dispatch]);
 
-    // Filtra os posts válidos para renderização
+    // Funções para controlar o modal
+    const handleOpenMobileComments = (postId) => setCommentModalPostId(postId);
+    const handleCloseMobileComments = () => setCommentModalPostId(null);
+
     const postsToRender = feedPosts.filter(post => post && post.user);
 
-    // 1. Estado de Carregamento Inicial
     if (status === 'loading' && postsToRender.length === 0) {
         return <Spinner />;
     }
 
-    // 2. Estado Vazio (Após a busca ter sucesso e não encontrar nada)
     if (status === 'succeeded' && postsToRender.length === 0) {
         return <EmptyFeedMessage />;
     }
     
-    // 3. Renderização Principal dos Posts
     return (
         <div>
             {postsToRender.map((post, index) => {
+                const props = {
+                    key: post._id,
+                    post: post,
+                    onOpenMobileComments: handleOpenMobileComments, // Passar a função
+                };
                 if (postsToRender.length === index + 1) {
-                    return <Post ref={lastPostElementRef} key={post._id} post={post} />;
-                } else {
-                    return <Post key={post._id} post={post} />;
+                    return <Post ref={lastPostElementRef} {...props} />;
                 }
+                return <Post {...props} />;
             })}
 
-            {/* Spinner para as próximas páginas */}
             {status === 'loading' && postsToRender.length > 0 && <Spinner />}
 
             {!hasMore && postsToRender.length > 0 && (
                 <p style={{ textAlign: 'center', margin: '20px 0' }}>Você chegou ao fim!</p>
             )}
+
+            <CommentsModal 
+                isOpen={!!commentModalPostId} 
+                onClose={handleCloseMobileComments}
+                postId={commentModalPostId}
+            />
         </div>
     );
 };

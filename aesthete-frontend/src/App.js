@@ -5,7 +5,6 @@ import styled from 'styled-components';
 
 // Componentes e Páginas
 import Navbar from './components/Navbar';
-import MobileFooter from './components/MobileFooter';
 import SearchPage from './pages/SearchPage'; // Importe a nova página de busca
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -57,7 +56,6 @@ return (
           <Route path="/redefinir-senha/:resettoken" element={<ResetPasswordPage />} />
         </Routes>
         </MainContainer>
-      {loggedInUser && <MobileFooter />}
     </Router>
   );
 }

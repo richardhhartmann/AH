@@ -38,7 +38,7 @@ const ModalContent = styled.div`
 `;
 
 const ModalHeader = styled.div`
-  padding: 16px;
+  padding: 24px 16px;
   text-align: center;
   border-bottom: 1px solid #dbdbdb;
   position: relative;

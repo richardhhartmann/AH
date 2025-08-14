@@ -27,8 +27,6 @@ const io = initSocket(server);
 const allowedOrigins = ['http://localhost:3000', 'https://ah-three.vercel.app'];
 app.use(cors({
     origin: function (origin, callback) {
-        // !! LINHA DE DEBUG !! Adicione esta linha para ver a URL que chega
-        console.log('CORS: Requisição recebida da origem:', origin);
 
         // Sua lógica de verificação continua a mesma
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {

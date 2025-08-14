@@ -20,6 +20,11 @@ const RankingContainer = styled.div`
   margin-bottom: 24px;
     background-color: rgb(255, 240, 233); /* Laranja bem clarinho */
   border: 2px solid rgb(254, 121, 13);  /* Borda laranja */
+    @media (max-width: 768px) {
+      margin: 24px auto;       /* Centraliza e dá espaço em cima */
+      width: 90%;              /* Deixa um pouco de espaço nas laterais */
+      padding: 10px 12px;      /* Menos altura e largura interna */
+    }
 `;
 
 const Header = styled.h3`
@@ -49,7 +54,6 @@ const UserPodium = styled(Link)`
     height: 50px;
     border-radius: 50%;
     margin-bottom: 5px;
-    border: 2px solid #dbdbdb;
     object-fit: cover;
   }
 
@@ -124,7 +128,6 @@ const TopPosters = () => {
                         to={`/perfil/${item.user.username}`} 
                         className={podiumClasses[index]}
                     >
-                        <MedalIcon color={medalColors[index]} />
                         <img src={item.user.avatar.startsWith('http') ? item.user.avatar : `${API_URL}${item.user.avatar}`} alt={item.user.username} />
                         <strong>{item.user.username}</strong>
                         <span>{item.postCount} posts</span>

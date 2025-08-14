@@ -8,6 +8,13 @@ export const PostContainer = styled.div`
     margin-bottom: 24px;
     max-width: 615px;
     overflow: hidden; // Garante que nada "vaze" para fora do container
+
+    @media (max-width: 768px) {
+      border: none;
+      border-radius: 0;
+      background-color: transparent;
+      margin-bottom: 0;
+    }
 `;
 
 export const PostHeader = styled.div`
@@ -22,6 +29,16 @@ export const PostHeader = styled.div`
         margin-right: 14px;
         object-fit: cover;
     }
+
+    @media (max-width: 768px) {
+        img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            margin-right: 14px;
+            object-fit: cover;
+        }
+    }
 `;
 
 // NOVO: Container para agrupar username, cargo e timestamp
@@ -33,6 +50,12 @@ export const UserInfoContainer = styled.div`
     
     strong {
         font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        strong {
+            font-size: 1.1rem;
+        }
     }
 `;
 

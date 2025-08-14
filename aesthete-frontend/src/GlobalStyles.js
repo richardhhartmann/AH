@@ -42,6 +42,8 @@ const GlobalStyles = createGlobalStyle`
 
     @media (max-width: 768px) {
       padding-bottom: 100px;
+      padding-left: 0;
+      padding-right: 0;
     }
   }
 `;

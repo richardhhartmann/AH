@@ -9,8 +9,7 @@ import io from 'socket.io-client';
 
 // Ícones
 import logoImage from '../assets/images/logo.png';
-import bannerImage from '../assets/images/banner.png';
-import { IoAddCircleOutline, IoAddCircle, IoArrowBack } from "react-icons/io5";
+import { IoAddCircleOutline, IoAddCircle, IoArrowBack, IoSearchOutline } from "react-icons/io5";
 import { CgProfile } from "react-icons/cg";
 import { FiLogOut } from "react-icons/fi";
 import { FaRegBell } from "react-icons/fa";
@@ -50,14 +49,14 @@ const NotificationsDropdown = styled.div`
 `;
 
 const MobileNotificationsDropdown = styled(NotificationsDropdown)`
-  /* Ajustes para o dropdown abrir para cima a partir do rodapé */
-  bottom: 70px; /* Posição acima do rodapé de 60px + 10px de margem */
-  top: auto;    /* Remove a propriedade 'top' herdada */
-  
-  /* Centraliza o dropdown em relação ao ícone */
-  left: 50%;
-  transform: translateX(-50%);
-  right: auto; /* Remove a propriedade 'right' herdada */
+  /* ALTERAÇÃO AQUI: 
+    Ajustes para o dropdown abrir para baixo a partir do cabeçalho superior.
+  */
+  top: 60px;       /* Posição abaixo do cabeçalho de 60px */
+  right: 20px;     /* Alinha à direita com o padding do cabeçalho */
+  left: auto;      /* Remove o posicionamento 'left' e 'transform' */
+  transform: none;
+  bottom: auto;    /* Remove o posicionamento 'bottom' */
 
   /* Fix para garantir que o dropdown não fique muito largo em telas pequenas */
   @media (max-width: 400px) {
@@ -161,7 +160,6 @@ const MobileFooter = styled.footer`
 const TopMobileHeader = styled.div`
     display: none;
     @media (max-width: 768px) {
-        border-radius: 20px 20px 0 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -175,6 +173,12 @@ const TopMobileHeader = styled.div`
         width: 100%;     /* ADICIONADO */
         z-index: 10;
     }
+`;
+
+const MobileHeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px; /* Espaçamento reduzido entre os ícones */
 `;
 
 const MobileSearchOverlay = styled.div`
@@ -546,12 +550,7 @@ const Navbar = () => {
     }
 
     return (
-        // ==================================================================
-        // ALTERAÇÃO 2: Renderiza ambos os componentes (Header e Footer)
-        // O CSS cuidará de qual exibir com base no tamanho da tela
-        // ==================================================================
         <>
-            {/* --- CABEÇALHO PARA DESKTOP --- */}
             <DesktopHeader>
                 <NavContainer>
                     <Logo to="/">
@@ -637,19 +636,63 @@ const Navbar = () => {
             
             {/* ADIÇÃO 2: Cabeçalho superior simplificado para mobile (Logo e Busca) */}
             <TopMobileHeader>
-              <BannerWrapper>
-                <Banner to="/">
-                  <img src={logoImage} alt="Logo" />
-                </Banner>
-              </BannerWrapper>
-              
-              {/* BOTÃO DE BUSCA SUBSTITUÍDO POR LINK PARA O CHAT */}
-              <Link to="/chat" title="Mensagens Diretas">
+              <Banner to="/">
+                <img src={logoImage} alt="Logo" />
+              </Banner>
+
+              <MobileHeaderActions>
+                <Link to="/" title="Feed">
+                  <NavIconWrapper isSelected={location.pathname === '/'}>
+                    <BiWorld />
+                  </NavIconWrapper>
+                </Link>
+
+                <Link to="/chat" title="Mensagens Diretas">
                   <NavIconWrapper isSelected={location.pathname === '/chat'}>
                       <PiChats />
                       {totalUnreadCount > 0 && <UnreadCountBadge>{totalUnreadCount}</UnreadCountBadge>}
                   </NavIconWrapper>
-              </Link>
+                </Link>
+
+                <Link to="/pesquisar" title="Pesquisar">
+                    <NavIconWrapper isSelected={location.pathname === '/pesquisar'}>
+                        <IoSearchOutline />
+                    </NavIconWrapper>
+                </Link>
+
+                <div title="Notificações" ref={dropdownRef} onClick={handleBellClick} style={{cursor: 'pointer'}}>
+                  <NavIconWrapper isSelected={false} disableEffect>
+                    <FaRegBell />
+                    {unreadNotificationCount > 0 && !isDropdownOpen && <NotificationBadge>{unreadNotificationCount}</NotificationBadge>}
+                  </NavIconWrapper>
+                  {isDropdownOpen && (
+                  <MobileNotificationsDropdown>
+                    {notifications.length > 0 ? notifications.map(notif => (
+                      <NotificationItem 
+                        key={notif._id} 
+                        to={getNotificationLink(notif)}
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                      <img 
+                          src={notif?.sender?.avatar?.startsWith('http') ? notif.sender.avatar : `${API_URL}${notif?.sender?.avatar || '../images/default.png'}`} 
+                          alt={notif?.sender?.username || 'Usuário'} 
+                      />
+                      <p>
+                          <strong>{notif.sender.username}</strong>
+                          {' '}{getNotificationText(notif)}
+                      </p>
+                      </NotificationItem>
+                        )) : <p style={{padding: '16px', textAlign: 'center', color: '#8e8e8e'}}>Nenhuma notificação.</p>}
+                  </MobileNotificationsDropdown>
+                            )}
+                </div>
+
+                <Link to={`/perfil/${loggedInUser.username}`} title="Perfil">
+                  <NavIconWrapper isSelected={location.pathname === `/perfil/${loggedInUser.username}`}>
+                      <CgProfile />
+                  </NavIconWrapper>
+                </Link>
+              </MobileHeaderActions>
           </TopMobileHeader>
 
           <MobileSearchOverlay isOpen={isMobileSearchOpen} ref={searchOverlayRef}>
@@ -663,53 +706,6 @@ const Navbar = () => {
             {/* O componente só será montado quando a busca mobile estiver aberta */}
             {isMobileSearchOpen && <SearchComponent />}
         </MobileSearchOverlay>
-
-
-            {/* ADIÇÃO 3: O novo rodapé de navegação para mobile */}
-            <MobileFooter>
-              {/* Ícone 1: Feed (Mundo) */}
-              <Link to="/" title="Feed">
-                  <NavIconWrapper isSelected={location.pathname === '/'}>
-                      <BiWorld />
-                  </NavIconWrapper>
-              </Link>
-
-              {/* Ícone 2: Mensagens Diretas (Chats) */}
-              <Link to="/chat" title="Mensagens Diretas">
-                  <NavIconWrapper isSelected={location.pathname === '/chat'}>
-                      <PiChats />
-                      {totalUnreadCount > 0 && <UnreadCountBadge>{totalUnreadCount}</UnreadCountBadge>}
-                  </NavIconWrapper>
-              </Link>
-
-              {/* Ícone 3: Notificações (Sino) - com lógica de dropdown */}
-              <div title="Notificações" ref={dropdownRef} onClick={handleBellClick} style={{cursor: 'pointer', flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-                  <NavIconWrapper isSelected={isDropdownOpen} disableEffect>
-                      <FaRegBell />
-                      {unreadNotificationCount > 0 && !isDropdownOpen && <NotificationBadge>{unreadNotificationCount}</NotificationBadge>}
-                  </NavIconWrapper>
-                  {isDropdownOpen && (
-                      <MobileNotificationsDropdown> {/* Usando o novo componente de dropdown */}
-                          {notifications.length > 0 ? notifications.map(notif => (
-                              <NotificationItem 
-                                  key={notif._id} 
-                                  to={getNotificationLink(notif)}
-                                  onClick={() => setIsDropdownOpen(false)}
-                              >
-                                  <img 
-                                      src={notif?.sender?.avatar?.startsWith('http') ? notif.sender.avatar : `${API_URL}${notif?.sender?.avatar || '../images/default.png'}`} 
-                                      alt={notif?.sender?.username || 'Usuário'}
-                                  />
-                                  <p>
-                                      <strong>{notif.sender.username}</strong>
-                                      {' '}{getNotificationText(notif)}
-                                  </p>
-                              </NotificationItem>
-                          )) : <p style={{padding: '16px', textAlign: 'center', color: '#8e8e8e'}}>Nenhuma notificação.</p>}
-                      </MobileNotificationsDropdown>
-                  )}
-              </div>
-          </MobileFooter>
         </>
     );
 };

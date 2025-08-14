@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchExplorePosts, resetExplore } from '../features/posts/postSlice';
 import Post from './Post';
 import Spinner from './common/Spinner';
+import CommentsModal from './CommentsModal'; // Importar o modal
 
 const EmptyExploreMessage = () => (
     <div style={{ textAlign: 'center', color: '#8e8e8e', marginTop: '50px' }}>
@@ -13,6 +14,7 @@ const EmptyExploreMessage = () => (
 
 const ExploreFeed = () => {
     const dispatch = useDispatch();
+    const [commentModalPostId, setCommentModalPostId] = useState(null); // Estado para o modal
 
     const { 
         posts, 
@@ -47,6 +49,10 @@ const ExploreFeed = () => {
         };
     }, [dispatch]);
 
+    // Funções para controlar o modal
+    const handleOpenMobileComments = (postId) => setCommentModalPostId(postId);
+    const handleCloseMobileComments = () => setCommentModalPostId(null);
+
     const postsToRender = posts.filter(post => post && post.user);
 
     if (status === 'loading' && postsToRender.length === 0) {
@@ -59,18 +65,27 @@ const ExploreFeed = () => {
 
     return (
         <div>
-            {/* O Explorar pode ser renderizado em múltiplas colunas, mas por simplicidade vamos manter uma */}
             {postsToRender.map((post, index) => {
+                 const props = {
+                    key: post._id,
+                    post: post,
+                    onOpenMobileComments: handleOpenMobileComments, // Passar a função
+                };
                 if (postsToRender.length === index + 1) {
-                    return <Post ref={lastPostElementRef} key={post._id} post={post} />;
-                } else {
-                    return <Post key={post._id} post={post} />;
+                    return <Post ref={lastPostElementRef} {...props} />;
                 }
+                return <Post {...props} />;
             })}
             {status === 'loading' && <Spinner />}
             {!hasMore && postsToRender.length > 0 && (
                 <p style={{ textAlign: 'center', margin: '20px 0' }}>Você chegou ao fim!</p>
             )}
+
+            <CommentsModal 
+                isOpen={!!commentModalPostId} 
+                onClose={handleCloseMobileComments}
+                postId={commentModalPostId}
+            />
         </div>
     );
 };
