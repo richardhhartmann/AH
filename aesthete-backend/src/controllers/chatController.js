@@ -3,35 +3,62 @@ const User = require('../models/User');
 const Message = require('../models/Message');
 const Story = require('../models/Story');
 
-// @desc    Iniciar uma nova conversa ou buscar uma existente
-// @route   POST /api/chats
+/**
+ * @desc    Acessa uma conversa existente ou cria uma nova
+ * @route   POST /api/chats
+ * @access  Protected
+ */
 exports.accessChat = async (req, res) => {
-    const { userId } = req.body; // ID do outro usuário
+    const { userId } = req.body;
+    const loggedInUserId = req.user.id;
 
     if (!userId) {
-        return res.status(400).json({ message: 'UserId não fornecido' });
+        return res.status(400).json({ message: "ID do usuário não fornecido." });
     }
 
-    let isChat = await Chat.findOne({
-        participants: { $all: [req.user.id, userId] }
-    })
-    .populate('participants', '-password')
-    .populate('lastMessage');
+    try {
+        // VERSÃO MELHORADA DA CONSULTA:
+        // Procura por uma conversa 1-a-1 que contenha EXATAMENTE ambos os usuários
+        let chat = await Chat.findOne({
+            isGroupChat: false,
+            participants: { 
+                $all: [loggedInUserId, userId], // Garante que ambos os IDs estejam no array
+                $size: 2                        // Garante que SÃO APENAS esses dois
+            }
+        })
+        .populate("participants", "-password")
+        .populate({
+            path: "lastMessage",
+            populate: {
+                path: "sender",
+                select: "username avatar"
+            }
+        });
 
-    if (isChat) {
-        res.send(isChat);
-    } else {
-        const chatData = {
-            participants: [req.user.id, userId],
+        // Se a conversa já existe, retorna ela
+        if (chat) {
+            return res.status(200).json(chat);
+        }
+
+        // Se não existe, cria uma nova
+        const newChatData = {
+            chatName: "sender", // Placeholder
+            isGroupChat: false,
+            participants: [loggedInUserId, userId],
         };
 
-        try {
-            const createdChat = await Chat.create(chatData);
-            const fullChat = await Chat.findOne({ _id: createdChat._id }).populate('participants', '-password');
-            res.status(200).json(fullChat);
-        } catch (error) {
-            res.status(400).json({ message: error.message });
-        }
+        const createdChat = await Chat.create(newChatData);
+
+        const fullChat = await Chat.findById(createdChat._id).populate(
+            "participants",
+            "-password"
+        );
+
+        res.status(201).json(fullChat); // Usa 201 para indicar que um novo recurso foi criado
+
+    } catch (error) {
+        console.error("Erro em accessChat:", error);
+        res.status(500).json({ message: "Erro interno do servidor." });
     }
 };
 
@@ -92,6 +119,38 @@ exports.fetchMessages = async (req, res) => {
         res.json(messages);
     } catch (error) {
         res.status(400).json({ message: error.message });
+    }
+};
+
+// @desc    Deletar uma conversa
+// @route   DELETE /api/chats/:chatId
+exports.deleteChat = async (req, res) => {
+    try {
+        const chatId = req.params.chatId;
+        const userId = req.user.id;
+
+        const chat = await Chat.findById(chatId);
+
+        if (!chat) {
+            return res.status(404).json({ message: "Conversa não encontrada." });
+        }
+
+        // Verifica se o usuário que está tentando deletar faz parte da conversa
+        if (!chat.participants.includes(userId)) {
+            return res.status(403).json({ message: "Não autorizado a deletar esta conversa." });
+        }
+
+        // Deleta todas as mensagens associadas a esta conversa
+        await Message.deleteMany({ chat: chatId });
+
+        // Deleta a conversa
+        await chat.deleteOne();
+
+        res.status(200).json({ message: "Conversa deletada com sucesso." });
+
+    } catch (error) {
+        console.error("Erro ao deletar a conversa:", error);
+        res.status(500).json({ message: "Erro interno do servidor." });
     }
 };
 

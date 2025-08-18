@@ -1,13 +1,13 @@
 // postController.js
 
+const mongoose = require('mongoose'); 
 const Post = require('../models/Post');
 const User = require('../models/User');
 const Ad = require('../models/Ad');
 const Notification = require('../models/Notification');
 const Comment = require('../models/Comment');
-const cloudinary = require('cloudinary').v2; // << ADICIONADO: Importa o Cloudinary
+const cloudinary = require('cloudinary').v2;
 
-// As funções createPost e getFeedPosts permanecem como estão.
 // @desc    Criar um novo post
 // @route   POST /api/posts
 exports.createPost = async (req, res) => {
@@ -46,23 +46,48 @@ exports.getFeedPosts = async (req, res) => {
         
         const currentUser = await User.findById(req.user.id);
         if (!currentUser) {
-            console.log('DEBUG: Usuário não encontrado no banco de dados!');
             return res.status(404).json({ message: 'Usuário não encontrado.' });
         }
 
-        const userIds = [...currentUser.following, req.user.id];
+        // Garante que todos os IDs sejam strings antes de mapear
+        const userIds = [...currentUser.following.map(id => id.toString()), req.user.id];
 
         const totalPosts = await Post.countDocuments({ user: { $in: userIds } });
-        const posts = await Post.find({ user: { $in: userIds } })
-            .populate('user', 'username avatar profession') 
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean();
 
-        if (posts.length > 0) {
-            console.log('DEBUG: Estrutura do primeiro post ANTES de ser enviado:', posts[0]);
-        }
+        // --- INÍCIO DA LÓGICA CORRIGIDA ---
+
+        // 1. Usamos aggregate para adicionar o campo com a contagem total de comentários
+        let posts = await Post.aggregate([
+            // O $match agora usa a conversão correta para ObjectId
+            { $match: { user: { $in: userIds.map(id => new mongoose.Types.ObjectId(id)) } } },
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $addFields: {
+                    commentsCount: { $size: '$comments' }
+                }
+            }
+        ]);
+
+        // 2. Populamos os dados necessários após a agregação
+        posts = await Post.populate(posts, [
+            { 
+                path: 'user', 
+                select: 'username avatar profession' 
+            },
+            {
+                path: 'comments',
+                perDocumentLimit: 2,
+                options: { sort: { createdAt: -1 } },
+                populate: {
+                    path: 'author',
+                    select: 'username avatar'
+                }
+            }
+        ]);
+        
+        // --- FIM DA LÓGICA CORRIGIDA ---
 
         res.json({
             posts,
@@ -79,10 +104,9 @@ exports.getFeedPosts = async (req, res) => {
 
 // @desc    Curtir ou descurtir um post
 // @route   POST /api/posts/:id/like
-// --- LÓGICA DE LIKE CORRIGIDA ---
 exports.likePost = async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id);
+        const post = await Post.findById(req.params.id).select('likes user');
 
         if (!post) {
             return res.status(404).json({ message: 'Post não encontrado' });
@@ -92,13 +116,10 @@ exports.likePost = async (req, res) => {
         const isLiked = post.likes.includes(userId);
 
         if (isLiked) {
-            // Descurtir: Remove o ID do usuário do array de likes
             post.likes = post.likes.filter(id => id.toString() !== userId.toString());
         } else {
-            // Curtir: Adiciona o ID do usuário ao array de likes
             post.likes.push(userId);
             
-            // Cria notificação apenas ao curtir, e se não for o próprio post
             if (post.user.toString() !== userId.toString()) {
                 const notification = new Notification({
                     recipient: post.user,
@@ -119,12 +140,13 @@ exports.likePost = async (req, res) => {
     }
 };
 
-// Sua função getPostById já está correta para resolver o problema dos comentários!
+// @desc    Obter um post pelo ID
+// @route   GET /api/posts/:id
 exports.getPostById = async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
-        .populate('user', 'username avatar profession') // Adicione 'profession' aqui
-        .populate({ // Popula os comentários e os autores dos comentários
+        .populate('user', 'username avatar profession')
+        .populate({
                 path: 'comments',
                 populate: {
                     path: 'author',
@@ -136,7 +158,6 @@ exports.getPostById = async (req, res) => {
             return res.status(404).json({ message: 'Post não encontrado' });
         }
 
-        // O 'post' já vem com os comentários populados, não precisamos fazer outra busca.
         res.json(post);
 
     } catch (error) {
@@ -147,7 +168,6 @@ exports.getPostById = async (req, res) => {
 
 // @desc    Deletar um post
 // @route   DELETE /api/posts/:id
-// --- LÓGICA DE DELETE CORRIGIDA ---
 exports.deletePost = async (req, res) => {
     try {
         const post = await Post.findById(req.params.id);
@@ -160,19 +180,13 @@ exports.deletePost = async (req, res) => {
             return res.status(401).json({ message: 'Não autorizado' });
         }
 
-        // Deleta a imagem do Cloudinary
         const publicId = post.mediaUrl.split('/').pop().split('.')[0];
         if (publicId) {
             await cloudinary.uploader.destroy(publicId);
         }
 
-        // Deleta os comentários associados ao post
         await Comment.deleteMany({ post: post._id });
-        
-        // Deleta as notificações associadas ao post
         await Notification.deleteMany({ post: post._id });
-
-        // Deleta o post do banco de dados
         await post.deleteOne();
 
         res.json({ message: 'Post e dados associados removidos com sucesso' });
@@ -204,12 +218,9 @@ exports.addCommentToPost = async (req, res) => {
         });
         await newComment.save();
 
-        // --- ADICIONE ESTAS DUAS LINHAS ---
-        // Adiciona a referência do novo comentário ao array de comentários do post
         post.comments.push(newComment._id);
-        await post.save(); // Salva o post atualizado com o novo comentário
+        await post.save();
 
-        // Cria a notificação (se não for o dono do post)
         if (post.user._id.toString() !== authorId.toString()) {
             await Notification.create({
                 sender: authorId,
@@ -234,7 +245,7 @@ exports.addCommentToPost = async (req, res) => {
 exports.getExploreFeed = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 15; // O Explorar pode carregar mais posts
+        const limit = parseInt(req.query.limit) || 15;
         const skip = (page - 1) * limit;
 
         const loggedInUser = await User.findById(req.user.id);
@@ -251,7 +262,6 @@ exports.getExploreFeed = async (req, res) => {
             .limit(limit)
             .lean();
 
-        // Retorna o mesmo formato estruturado para consistência
         res.json({
             posts,
             currentPage: page,

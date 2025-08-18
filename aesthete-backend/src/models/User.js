@@ -6,6 +6,7 @@ const UserSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, trim: true },
     password: { type: String, required: true },
     avatar: { type: String, default: '/uploads/avatars/default.jpg' },
+    banner: { type: String, default: '/uploads/banner.png' },
     bio: { type: String, maxlength: 150, default: '' },
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
@@ -28,7 +29,6 @@ const UserSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
-// Criptografar senha antes de salvar
 UserSchema.pre('save', async function(next) {
     if (!this.isModified('password')) {
         return next();

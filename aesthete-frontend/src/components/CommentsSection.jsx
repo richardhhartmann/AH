@@ -47,7 +47,7 @@ const CommentForm = styled.form`
   button {
     background: none;
     border: none;
-    color: #0095f6;
+    color: rgb(254, 121, 13);
     font-weight: bold;
     cursor: pointer;
   }

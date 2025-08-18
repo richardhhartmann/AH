@@ -4,13 +4,66 @@ import { useLocation, Link, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import io from 'socket.io-client';
-import { FiCheck, FiSend } from "react-icons/fi";
+import { FiCheck, FiSend, FiMoreVertical, FiTrash2 } from "react-icons/fi";
 import { FaMicrophone } from 'react-icons/fa';
 import { IoArrowBack } from "react-icons/io5";
-import { fetchChats, markChatAsReadInState, updateChatStateFromSocket } from '../features/chat/chatSlice';
+import { fetchChats, markChatAsReadInState, updateChatStateFromSocket, removeChatFromState } from '../features/chat/chatSlice'; 
 import AudioPlayer from '../components/AudioPlayer';
 
-// --- Styled Components ---
+const MenuButton = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  transform: translateY(-50%);
+  padding: 5px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: #8e8e8e;
+  
+  opacity: 0; // Continua escondido por padrão
+  transition: opacity 0.2s ease-in-out, background-color 0.2s;
+
+  &:hover {
+    background-color: #e0e0e0;
+  }
+`;
+
+const DropdownMenu = styled.div`
+  position: absolute;
+  top: 40px;
+  right: 15px;
+  background-color: white;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  overflow: hidden;
+`;
+
+const DropdownItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 10px 15px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #ed4956; // Cor vermelha para ação destrutiva
+
+  &:hover {
+    background-color: #fafafa;
+  }
+`;
+
 const ChatContainer = styled.div`
   display: flex;
   height: calc(90vh - 61px); /* Subtrai a altura da Navbar */
@@ -43,8 +96,16 @@ const ChatItem = styled.div`
   padding: 10px 15px;
   cursor: pointer;
   background-color: ${props => props.isActive ? '#efefef' : 'transparent'};
-  position: relative;
-  &:hover { background-color: #fafafa; }
+  position: relative; // Essencial para o posicionamento do menu
+  
+  &:hover { 
+    background-color: #fafafa;
+  }
+
+  // Esta nova regra torna o MenuButton visível quando o mouse está sobre o ChatItem
+  &:hover ${MenuButton} {
+    opacity: 1;
+  }
 `;
 
 const AvatarWrapper = styled.div`
@@ -246,6 +307,20 @@ const ChatPage = () => {
     const streamRef = useRef(null);
     const messagesEndRef = useRef(null);
     const selectedChatRef = useRef(null);
+    const [openMenuId, setOpenMenuId] = useState(null); 
+    const menuRef = useRef(null); 
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setOpenMenuId(null);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     useEffect(() => {
         selectedChatRef.current = selectedChat;
@@ -257,6 +332,7 @@ const ChatPage = () => {
     
     const handleSelectChat = useCallback(async (chat) => {
         setSelectedChat(chat);
+        setOpenMenuId(null);
         if (chat.unreadCount > 0) {
             try {
                 await api.put(`/chats/${chat._id}/read`);
@@ -321,6 +397,31 @@ const ChatPage = () => {
         };
         fetchMessages();
     }, [selectedChat, socket]);
+
+    const handleToggleMenu = (e, chatId) => {
+        e.stopPropagation(); // Impede que o chat seja selecionado ao clicar no menu
+        setOpenMenuId(prevId => (prevId === chatId ? null : chatId));
+    };
+
+    // NOVA FUNÇÃO para deletar a conversa
+    const handleDeleteChat = async (e, chatIdToDelete) => {
+        e.stopPropagation();
+        if (window.confirm("Tem certeza que deseja apagar esta conversa? Esta ação não pode ser desfeita.")) {
+            try {
+                await api.delete(`/chats/${chatIdToDelete}`);
+                dispatch(removeChatFromState(chatIdToDelete)); // Atualiza o estado do Redux
+                
+                // Se a conversa deletada era a que estava selecionada
+                if (selectedChat?._id === chatIdToDelete) {
+                    setSelectedChat(null);
+                }
+                setOpenMenuId(null);
+            } catch (error) {
+                console.error("Erro ao deletar a conversa", error);
+                alert("Não foi possível apagar a conversa. Tente novamente.");
+            }
+        }
+    };
 
     const handleTyping = (e) => {
         setNewMessage(e.target.value);
@@ -479,6 +580,18 @@ const ChatPage = () => {
                                 )}
                             </ChatInfo>
                             {chat.unreadCount > 0 && <UnreadBadge>{chat.unreadCount}</UnreadBadge>}
+                            <MenuButton onClick={(e) => handleToggleMenu(e, chat._id)}>
+                                <FiMoreVertical />
+                            </MenuButton>
+                            
+                            {openMenuId === chat._id && (
+                                <DropdownMenu ref={menuRef}>
+                                    <DropdownItem onClick={(e) => handleDeleteChat(e, chat._id)}>
+                                        <FiTrash2 />
+                                        Apagar Conversa
+                                    </DropdownItem>
+                                </DropdownMenu>
+                            )}
                         </ChatItem>
                     );
                 })}

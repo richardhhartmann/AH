@@ -13,6 +13,10 @@ export const LikedIcon = () => (
   <BsHandThumbsUpFill   size={24} style={{ color: "rgb(254, 121, 13)", fill: "rgb(254, 121, 13)" }} />
 );
 
+export const LikedIconPreview = () => (
+  <BsHandThumbsUpFill   size={24} style={{ color: "rgba(255, 255, 255, 1)", fill: "rgba(255, 255, 255, 1)" }} />
+);
+
 // Ícone de comentário
 export const CommentIcon = () => (
   <IoChatbubbleOutline  size={24} style={{ color: "rgb(254, 121, 13)" }} />

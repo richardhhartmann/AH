@@ -14,10 +14,15 @@ export const fetchChats = createAsyncThunk('chat/fetchChats', async () => {
     return response.data;
 });
 
-const chatSlice = createSlice({
+export const chatSlice = createSlice({
     name: 'chat',
     initialState,
     reducers: {
+        removeChatFromState: (state, action) => {
+            const chatIdToRemove = action.payload;
+            state.chats = state.chats.filter(chat => chat._id !== chatIdToRemove);
+            },
+
         updateChatStateFromSocket: (state, action) => {
             const { newMessage, loggedInUserId } = action.payload;
             let chatExists = false;
@@ -75,6 +80,6 @@ const chatSlice = createSlice({
     },
 });
 
-export const { updateChatStateFromSocket, markChatAsReadInState } = chatSlice.actions;
+export const { updateChatStateFromSocket, markChatAsReadInState, removeChatFromState } = chatSlice.actions;
 
 export default chatSlice.reducer;

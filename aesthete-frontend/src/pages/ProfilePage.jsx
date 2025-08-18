@@ -1,20 +1,118 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { FaHeart, FaComment } from 'react-icons/fa';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux'; 
+import { fetchChats } from '../features/chat/chatSlice';
 import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import Modal from '../components/Modal';
 import FullscreenStoryViewer from '../components/FullscreenStoryViewer';
-import { BsChat } from "react-icons/bs";
+import { LikedIconPreview } from '../components/Icons';
+import { GoGear } from "react-icons/go"; 
+import { BsChat, BsChatFill } from "react-icons/bs";
+import { IoAdd } from "react-icons/io5";
+import { IoIosArrowBack } from "react-icons/io";
 
 // --- Styled Components (sem alterações) ---
+
+const ChatIconWrapper = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  width: 16px;
+
+  svg {
+    position: absolute;
+    transition: opacity 0.3s ease-in-out;
+  }
+`;
+
+const MobileProfileHeader = styled.header`
+  display: none; // Escondido por padrão, aparece apenas no mobile
+  @media (max-width: 768px) {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; // Alinha o botão à esquerda
+    padding: 0 15px;
+    height: 60px;
+    background-color: transparent; // Fundo transparente
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 100;
+  }
+`;
+
+const HeaderTitle = styled.h1`
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+  flex-grow: 1; // FAZ O TÍTULO OCUPAR O ESPAÇO DISPONÍVEL
+  color: white;
+  text-shadow: 0px 1px 4px rgba(0, 0, 0, 0.8);
+  // Remove o posicionamento absoluto para que ele participe do layout flex
+`;
+
+const BackButton = styled.button`
+  background-color: rgb(254, 121, 13); // Fundo redondo laranja
+  color: white; // Cor da seta
+  border: none;
+  border-radius: 50%; // Totalmente redondo
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1.5rem; // Tamanho do ícone da seta
+  
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
+const SettingsButton = styled(Link)`
+  background-color: rgb(254, 121, 13);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1.2rem; // Tamanho do ícone de engrenagem
+`;
 
 const ProfileWrapper = styled.div`
   max-width: 935px;
   margin: 0 auto;
-  padding: 30px 20px;
+  padding: 0 20px 30px;
+
   @media (max-width: 768px) {
-    padding: 15px;
+    padding: 60px 0 15px; // Adiciona espaço no topo
+  }
+`;
+
+const BannerContainer = styled.div`
+  width: 100%;
+  height: 200px;
+  background-color: #fff;
+  background-image: url(${props => props.src});
+  background-size: cover;
+  background-position: center;
+  margin-bottom: -80px; 
+
+  @media (max-width: 768px) {
+    height: 120px;
+    margin-bottom: -50px;
+    margin-top: -120px; /* <<< ESSA É A CORREÇÃO! */
   }
 `;
 
@@ -43,10 +141,43 @@ const MobileChatButton = styled.button`
 const ProfileHeader = styled.header`
   display: flex;
   margin-bottom: 44px;
+  position: relative; // Necessário para o z-index funcionar
+  padding: 0 30px; // Adiciona um respiro nas laterais para não colar na borda
 
   @media (max-width: 768px) {
     flex-direction: column;
     margin-bottom: 24px;
+    padding: 0 15px;
+  }
+`;
+
+const FloatingCreateButton = styled(Link)`
+  display: none; // Escondido por padrão
+  @media (max-width: 768px) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    bottom: 80px; // Posição acima do footer de navegação
+    right: 20px;
+    width: 80px;
+    height: 80px;
+    background-color: rgb(254, 121, 13);
+    color: white;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+    transition: transform 0.2s ease-in-out;
+
+    &:hover {
+      transform: scale(1.05);
+    }
+
+    svg {
+      font-size: 2rem;
+    }
   }
 `;
 
@@ -76,8 +207,9 @@ const Avatar = styled.img`
   border-radius: 50%;
   object-fit: cover;
   cursor: ${props => props.hasStory ? 'pointer' : 'default'};
-  border: ${props => props.hasStory ? '4px solid rgb(254, 121, 13)' : '3px solid #dbdbdb'};
+  border: ${props => props.hasStory ? '4px solid rgb(254, 121, 13)' : '4px solid #fff'}; // Borda branca para destacar do banner
   padding: 3px;
+  background-color: #fff; // Fundo branco para a borda ficar visível
 
   @media (max-width: 768px) {
     width: 80px;
@@ -88,10 +220,10 @@ const Avatar = styled.img`
 const ProfileInfo = styled.section`
   flex-grow: 1;
 `;
-
 const UsernameRow = styled.div`
   display: flex;
   align-items: center;
+  margin-top: 100px;
   margin-bottom: 20px;
   gap: 10px;
   flex-wrap: wrap;
@@ -106,11 +238,9 @@ const UsernameRow = styled.div`
     margin-right: 20px;
     }
   @media (max-width: 768px) {
-    margin-bottom: 10px;
-    h2 { font-size: 22px; }
+    display: none;
   }
 `;
-
 const ActionButton = styled.button`
     padding: 7px 16px;
     border: 1px solid #dbdbdb;
@@ -119,16 +249,15 @@ const ActionButton = styled.button`
     cursor: pointer;
     flex-shrink: 0;
     &.primary {
-        background-color: #0095f6;
+        background-color: #fe790d;
         color: white;
         border: none;
     }
 
     @media (max-width: 768px) {
         display: none;
-    }    
+    }
 `;
-
 const ActionButtonMobile = styled.button`
   width: 100%;
   max-width: 500px;
@@ -155,7 +284,6 @@ const ActionButtonMobile = styled.button`
     border: none;
   }
 `;
-
 const ChatButton = styled(ActionButton)`
     background-color: rgb(254, 121, 13);
     color: white;
@@ -168,7 +296,6 @@ const ChatButton = styled(ActionButton)`
         display: none;
     }
 `;
-
 const BioAndProfessionContainer = styled.div`
     position: relative;
     display: block;
@@ -177,7 +304,6 @@ const BioAndProfessionContainer = styled.div`
         padding: 0 5px;
     }
 `;
-
 const Bio = styled.div`
   .username {
     font-size: 1.4rem;
@@ -190,15 +316,13 @@ const Bio = styled.div`
     line-height: 1.5;
   }
 `;
-
 const Profession = styled.p`
-  padding-top: 5px;  
+  padding-top: 5px;
   padding-bottom: 3px;
   font-size: 0.9rem;
   font-weight: 600;
   color: #f58529;
 `;
-
 const StatsRow = styled.div`
   display: flex;
   margin-bottom: 20px;
@@ -210,7 +334,7 @@ const StatsRow = styled.div`
       font-weight: 600;
     }
   }
-  
+
   @media (max-width: 768px) {
     justify-content: space-around;
     width: 100%;
@@ -233,7 +357,6 @@ const StatsRow = styled.div`
     &:hover { text-decoration: underline; }
   }
 `;
-
 const StatsRowMobile = styled.div`
   display: flex;
   margin-bottom: 20px;
@@ -285,7 +408,6 @@ const StatsRowMobile = styled.div`
     }
   }
 `;
-
 const PostGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -298,44 +420,131 @@ const PostGrid = styled.div`
       padding-top: 30px;
   }
 `;
+const PostImage = styled.img`
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* A propriedade 'transition' foi removida para efeito instantâneo */
+`;
 
-const PostThumbnail = styled.div`
+const PostStats = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  color: white;
+  font-weight: bold;
+  font-size: 1.1rem;
+  
+  span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+`;
+
+const PostOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  /* A propriedade 'transition' foi removida para efeito instantâneo */
+`;
+
+const PostThumbnailContainer = styled.div`
   position: relative;
   width: 100%;
   padding-bottom: 100%;
-  img {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  cursor: pointer;
+
+  &:hover ${PostOverlay} {
+    opacity: 1;
+  }
+
+  &:hover ${PostImage} {
+    filter: brightness(0.6);
   }
 `;
 
 const UserListItem = styled.div`
-    display: flex;
-    align-items: center;
-    margin-bottom: 12px;
-    img {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        margin-right: 12px;
-    }
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
 `;
+
+const UserInfoModal = styled.div`
+  display: flex;
+  align-items: center;
+  img {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    margin-right: 12px;
+  }
+  div {
+    display: flex;
+    flex-direction: column;
+  }
+  strong {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+`;
+
+const UserProfessionModal = styled.span`
+  font-size: 0.8rem;
+  color: #8e8e8e;
+`;
+
+const FollowButtonModal = styled.button`
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.8rem;
+  
+  &.follow {
+    background-color: #fe790d;
+    color: white;
+  }
+  &.unfollow {
+    background-color: #efefef;
+    color: black;
+    border-color: #dbdbdb;
+  }
+`;
+
 
 // --- Componente Principal ---
 const ProfilePage = () => {
+    const [isChatHovered, setIsChatHovered] = useState(false);
     const { username } = useParams();
     const { user: loggedInUser } = useSelector((state) => state.auth);
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
+    // ... (resto dos seus estados)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTitle, setModalTitle] = useState('');
     const [modalUsers, setModalUsers] = useState([]);
     const [userActiveStories, setUserActiveStories] = useState(null);
     const [isViewerOpen, setIsViewerOpen] = useState(false);
+
+    const isMyProfile = loggedInUser?._id === profileData?.user?._id;
+
+    const handleGoBack = () => {
+        navigate(-1);
+    };
 
     const fetchProfile = useCallback(async () => {
         setLoading(true);
@@ -366,16 +575,63 @@ const ProfilePage = () => {
         }
     };
     
+    const handleFollowInModal = async (targetUserId) => {
+        try {
+            await api.put(`/users/follow/${targetUserId}`);
+            setModalUsers(currentUsers =>
+                currentUsers.map(user => {
+                    if (user._id === targetUserId) {
+                        return { ...user, isFollowedByMe: !user.isFollowedByMe };
+                    }
+                    return user;
+                })
+            );
+            fetchProfile();
+        } catch (error) {
+            console.error("Erro ao seguir/deixar de seguir no modal", error);
+        }
+    };
+
     const handleStartChat = async () => {
         if (!profileData) return;
         try {
             const { data } = await api.post('/chats', { userId: profileData.user._id });
-            navigate(`/chat/${data._id}`); 
+            dispatch(fetchChats()); 
+            navigate(`/chat/${data._id}`);
         } catch (error) {
             console.error("Erro ao iniciar chat", error);
         }
     };
     
+    // ALTERAÇÃO 1: A função agora aceita um 'type' para saber qual modal está sendo aberto.
+    const processModalUsers = (users, type) => {
+        const usersWithFollowStatus = users.map(user => {
+            let isFollowedByMe;
+
+            // Se for o meu perfil e eu estiver vendo a lista de "Seguindo",
+            // então, por definição, eu sigo todos nessa lista.
+            if (isMyProfile && type === 'following') {
+                isFollowedByMe = true;
+            } else {
+                // Para todos os outros casos, usa a lógica original.
+                isFollowedByMe = loggedInUser?.following?.includes(user._id);
+            }
+            
+            return {
+                ...user,
+                isFollowedByMe
+            };
+        });
+
+        usersWithFollowStatus.sort((a, b) => {
+            if (a._id === loggedInUser._id) return -1;
+            if (b._id === loggedInUser._id) return 1;
+            return 0;
+        });
+
+        setModalUsers(usersWithFollowStatus);
+    };
+
     const openStoryViewer = async () => {
         if (!profileData?.hasActiveStory) return;
         try {
@@ -386,14 +642,15 @@ const ProfilePage = () => {
             console.error("Erro ao buscar stories do usuário", error);
         }
     };
-    
+
     const openFollowersModal = async () => {
         if (!profileData || profileData.followerCount === 0) return;
         setModalTitle('Seguidores');
         setIsModalOpen(true);
         try {
             const { data } = await api.get(`/users/${profileData.user._id}/followers`);
-            setModalUsers(data);
+            // ALTERAÇÃO 2: Passa o tipo 'followers' para a função de processamento.
+            processModalUsers(data, 'followers');
         } catch (error) {
             console.error("Erro ao buscar seguidores", error);
         }
@@ -405,17 +662,23 @@ const ProfilePage = () => {
         setIsModalOpen(true);
         try {
             const { data } = await api.get(`/users/${profileData.user._id}/following`);
-            setModalUsers(data);
+            // ALTERAÇÃO 3: Passa o tipo 'following' para a função de processamento.
+            processModalUsers(data, 'following');
         } catch (error) {
             console.error("Erro ao buscar usuários que segue", error);
         }
     };
 
+
     if (loading) return <p style={{textAlign: 'center', marginTop: '40px'}}>Carregando perfil...</p>;
     if (!profileData) return <p style={{textAlign: 'center', marginTop: '40px'}}>Usuário não encontrado.</p>;
 
     const { user, posts, postCount, followerCount, followingCount, isFollowing, hasActiveStory } = profileData;
-    const isMyProfile = loggedInUser?._id === user._id;
+    
+    const getImageUrl = (url) => {
+        if (!url) return '';
+        return url.startsWith('http') ? url : `${API_URL}${url}`;
+    };
 
     const DesktopOnly = styled.div`
         display: block;
@@ -432,16 +695,29 @@ const ProfilePage = () => {
     `;
 
     return (
-        <ProfileWrapper>
-            <ProfileHeader>
-                <TopSection>
+        <>
+            <MobileProfileHeader>
+                <BackButton onClick={handleGoBack}>
+                    <IoIosArrowBack  />
+                </BackButton>
+                <HeaderTitle></HeaderTitle>
+
+                {isMyProfile ? (
+                    <SettingsButton to="/conta/editar" title="Editar Perfil">
+                        <GoGear />
+                    </SettingsButton>
+                ) : (
+                    <div style={{ width: '32px' }} />
+                )}
+            </MobileProfileHeader>
+
+            <ProfileWrapper>
+                <BannerContainer src={getImageUrl(user.banner)} />
+                <ProfileHeader>
+                    <TopSection>
                     <AvatarContainer onClick={openStoryViewer}>
-                        <Avatar 
-                            src={
-                                (user.avatar && user.avatar !== 'default_avatar_url') 
-                                ? (user.avatar.startsWith('http') ? user.avatar : `${API_URL}${user.avatar}`)
-                                : `${API_URL}/uploads/avatars/default.jpg`
-                            }
+                        <Avatar
+                            src={getImageUrl(user.avatar) || `${API_URL}/uploads/avatars/default.jpg`}
                             alt={`${user.username}'s avatar`}
                             hasStory={hasActiveStory}
                         />
@@ -457,8 +733,12 @@ const ProfilePage = () => {
                                         <ActionButton onClick={handleFollow} className={!isFollowing ? 'primary' : ''}>
                                             {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
                                         </ActionButton>
-                                        <ChatButton onClick={handleStartChat}>
-                                            <BsChat size={16} />
+                                        <ChatButton
+                                            onClick={handleStartChat}
+                                            onMouseEnter={() => setIsChatHovered(true)}
+                                            onMouseLeave={() => setIsChatHovered(false)}
+                                        >
+                                            {isChatHovered ? <BsChatFill size={16} /> : <BsChat size={16} />}
                                         </ChatButton>
                                     </>
                                 )}
@@ -507,62 +787,86 @@ const ProfilePage = () => {
                             <span>{user.bio}</span>
                         </Bio>
                     </BioAndProfessionContainer>
-    
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '16px' }}>
-                        {isMyProfile ? (
-                            <ActionButtonMobile as={Link} to="/conta/editar">Editar Perfil</ActionButtonMobile>
-                        ) : (
-                                <ActionButtonMobile onClick={handleFollow} className={!isFollowing ? 'primary' : ''}>
-                                    {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
-                                </ActionButtonMobile>
+                        {!isMyProfile && (
+                            <ActionButtonMobile onClick={handleFollow} className={!isFollowing ? 'primary' : ''}>
+                                {isFollowing ? 'Deixar de Seguir' : 'Seguir'}
+                            </ActionButtonMobile>
                         )}
                     </div>
                 </MobileOnly>
-            </ProfileHeader>
+                </ProfileHeader>
 
-            <PostGrid>
-                {posts.map(post => (
-                    <Link key={post._id} to={`/post/${post._id}`}>
-                        <PostThumbnail>
-                            <img src={post.mediaUrl.startsWith('http') ? post.mediaUrl : `${API_URL}${post.mediaUrl}`} alt={post.caption} />
-                        </PostThumbnail>
-                    </Link>
-                ))}
-            </PostGrid>
+                <PostGrid>
+                    {posts.map(post => (
+                        <Link key={post._id} to={`/post/${post._id}`}>
+                            <PostThumbnailContainer>
+                                <PostImage src={getImageUrl(post.mediaUrl)} alt={post.caption} />
+                                <PostOverlay>
+                                    <PostStats>
+                                        <span>
+                                            <LikedIconPreview /> {post.likes?.length || 0}
+                                        </span>
+                                        <span>
+                                            <FaComment /> {post.comments?.length || 0}
+                                        </span>
+                                    </PostStats>
+                                </PostOverlay>
+                            </PostThumbnailContainer>
+                        </Link>
+                    ))}
+                </PostGrid>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalTitle}>
-                {modalUsers.length > 0 ? (
-                    modalUsers.map(user => (
-                        <UserListItem key={user._id}>
-                            <img 
-                                src={
-                                    user.avatar?.startsWith('http')
-                                        ? user.avatar
-                                        : `${API_URL}${user.avatar || '/uploads/avatars/default.jpg'}`
-                                } 
-                                alt={user.username} 
-                            />
-                            <Link to={`/perfil/${user.username}`} onClick={() => setIsModalOpen(false)}>
-                                <strong>{user.username}</strong>
-                            </Link>
-                        </UserListItem>
-                    ))
-                ) : (
-                    <p style={{ padding: '10px' }}>Nenhum usuário encontrado.</p>
+                <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalTitle}>
+                    {modalUsers.length > 0 ? (
+                        modalUsers.map(user => (
+                            <UserListItem key={user._id}>
+                                <UserInfoModal>
+                                    <img
+                                        src={getImageUrl(user.avatar) || `${API_URL}/uploads/avatars/default.jpg`}
+                                        alt={user.username}
+                                    />
+                                    <div>
+                                        <Link to={`/perfil/${user.username}`} onClick={() => setIsModalOpen(false)}>
+                                            <strong>{user.username}</strong>
+                                        </Link>
+                                        {/* ALTERAÇÃO 4: Adiciona a profissão abaixo do username. */}
+                                        {user.profession && (
+                                            <UserProfessionModal>{user.profession}</UserProfessionModal>
+                                        )}
+                                    </div>
+                                </UserInfoModal>
+
+                                {user._id !== loggedInUser._id && (
+                                    <FollowButtonModal
+                                        className={user.isFollowedByMe ? 'unfollow' : 'follow'}
+                                        onClick={() => handleFollowInModal(user._id)}
+                                    >
+                                        {user.isFollowedByMe ? 'Deixar de Seguir' : 'Seguir'}
+                                    </FollowButtonModal>
+                                )}
+                            </UserListItem>
+                        ))
+                    ) : (
+                        <p style={{ padding: '10px' }}>Nenhum usuário encontrado.</p>
+                    )}
+                </Modal>
+
+                {isViewerOpen && userActiveStories && (
+                    <FullscreenStoryViewer
+                        allUsersStories={userActiveStories}
+                        initialUserIndex={0}
+                        onClose={() => setIsViewerOpen(false)}
+                    />
                 )}
-            </Modal>
-            
-            {/* ================================================ */}
-            {/* <<< AQUI ESTÁ A CORREÇÃO >>> */}
-            {/* ================================================ */}
-            {isViewerOpen && userActiveStories && (
-                <FullscreenStoryViewer 
-                    allUsersStories={userActiveStories} // Prop correta: allUsersStories
-                    initialUserIndex={0}                 // Prop correta: o índice é 0, pois é o primeiro (e único) usuário no array
-                    onClose={() => setIsViewerOpen(false)} 
-                />
+            </ProfileWrapper>
+             {isMyProfile && (
+                <FloatingCreateButton to="/criar" title="Criar nova publicação">
+                    <IoAdd />
+                </FloatingCreateButton>
             )}
-        </ProfileWrapper>
+        </>
     );
 };
 

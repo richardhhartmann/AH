@@ -115,24 +115,19 @@ exports.updateUserProfile = async (req, res) => {
         const user = await User.findById(req.user.id);
 
         if (user) {
+            user.username = req.body.username || user.username;
+            user.email = req.body.email || user.email;
+            user.bio = req.body.bio || user.bio;
+            user.profession = req.body.profession || user.profession;
 
-            if (req.body.username && req.body.username !== '') {
-                user.username = req.body.username;
-            }
-
-            if (req.body.email && req.body.email !== '' && req.body.email !== 'undefined') {
-                user.email = req.body.email;
-            }
-
-            if ('bio' in req.body) {
-                user.bio = req.body.bio;
-            }
-            if ('profession' in req.body) {
-                user.profession = req.body.profession;
-            }
-
-            if (req.file) {
-                user.avatar = req.file.path.replace('http://', 'https://');
+            // ALTERADO: req.file vira req.files
+            if (req.files) {
+                if (req.files.avatar) {
+                    user.avatar = req.files.avatar[0].path.replace('http://', 'https://');
+                }
+                if (req.files.banner) { // ADICIONADO: Lógica para o banner
+                    user.banner = req.files.banner[0].path.replace('http://', 'https://');
+                }
             }
 
             if (req.body.password) {
@@ -147,6 +142,7 @@ exports.updateUserProfile = async (req, res) => {
                 email: updatedUser.email,
                 bio: updatedUser.bio,
                 avatar: updatedUser.avatar,
+                banner: updatedUser.banner, // ADICIONADO: Retornar o banner
                 profession: updatedUser.profession,
                 token: jwt.sign({ id: updatedUser._id }, process.env.JWT_SECRET, { expiresIn: '30d' }),
             });
@@ -183,7 +179,7 @@ exports.searchUsers = async (req, res) => {
 exports.getFollowers = async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
-            .populate('followers', 'username avatar'); // Popula o array 'followers'
+            .populate('followers', 'username avatar profession'); 
 
         if (!user) {
             return res.status(404).json({ message: 'Usuário não encontrado' });
@@ -201,7 +197,7 @@ exports.getFollowers = async (req, res) => {
 exports.getFollowing = async (req, res) => {
     try {
         const user = await User.findById(req.params.id)
-            .populate('following', 'username avatar'); // Popula o array 'following'
+            .populate('following', 'username avatar profession');
 
         if (!user) {
             return res.status(404).json({ message: 'Usuário não encontrado' });
@@ -236,7 +232,7 @@ exports.getUserSuggestions = async (req, res) => {
         res.json(users);
     } catch (error) {
         // Adicionamos um log mais específico para futuras depurações
-        console.error("ERRO EM getUserSuggestions:", error); 
+        console.error("ERRO EM getUserSuggestions:", error);
         res.status(500).json({ message: 'Erro no servidor ao buscar sugestões.' });
     }
 };

@@ -4,7 +4,6 @@ import axios from 'axios'; // Supondo que você use axios
 const ENDPOINT = process.env.REACT_APP_API_URL;
 const API_URL = `${ENDPOINT}/api/auth/`; // A URL da sua API de autenticação
 
-// Tenta pegar o usuário do localStorage, se já logado
 const user = JSON.parse(localStorage.getItem('user'));
 
 const initialState = {
@@ -16,8 +15,6 @@ const initialState = {
 };
 
 // --- AÇÕES ASSÍNCRONAS (THUNKS) ---
-// Adicionamos 'export' na frente de cada uma
-
 export const register = createAsyncThunk(
     'auth/register',
     async (userData, thunkAPI) => {
@@ -57,7 +54,6 @@ export const logout = createAsyncThunk('auth/logout', async () => {
 export const authSlice = createSlice({
     name: 'auth',
     initialState,
-    // Reducer para ações síncronas
     reducers: {
         reset: (state) => {
             state.isLoading = false;
@@ -65,8 +61,13 @@ export const authSlice = createSlice({
             state.isError = false;
             state.message = '';
         },
+        // ▼▼▼ ALTERAÇÃO 1: ADICIONE ESTE REDUCER ▼▼▼
+        setCredentials: (state, action) => {
+            state.user = action.payload.user;
+            // Mantém o localStorage sincronizado
+            localStorage.setItem('user', JSON.stringify(action.payload.user));
+        },
     },
-    // Reducers para as ações assíncronas (thunks)
     extraReducers: (builder) => {
         builder
             .addCase(register.pending, (state) => {
@@ -105,8 +106,7 @@ export const authSlice = createSlice({
 
 // --- EXPORTAÇÕES ---
 
-// Exporta a ação síncrona 'reset'
-export const { reset } = authSlice.actions;
+// ▼▼▼ ALTERAÇÃO 2: EXPORTE A NOVA AÇÃO AQUI ▼▼▼
+export const { reset, setCredentials } = authSlice.actions;
 
-// Exporta o redutor como padrão (default)
 export default authSlice.reducer;

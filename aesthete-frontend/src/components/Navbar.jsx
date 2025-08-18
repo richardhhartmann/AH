@@ -3,37 +3,30 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout, reset } from '../features/auth/authSlice';
 import { fetchChats, updateChatStateFromSocket } from '../features/chat/chatSlice';
-import styled, { css } from 'styled-components';
+import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import io from 'socket.io-client';
+import useMediaQuery from '../hooks/useMediaQuery'; // Importando o hook
 
 // Ícones
 import logoImage from '../assets/images/logo.png';
-import { IoAddCircleOutline, IoAddCircle, IoArrowBack, IoSearchOutline } from "react-icons/io5";
+import { IoAddCircleOutline, IoAddCircle, IoSearchOutline } from "react-icons/io5";
 import { CgProfile } from "react-icons/cg";
 import { FiLogOut } from "react-icons/fi";
 import { FaRegBell } from "react-icons/fa";
 import { BiWorld } from "react-icons/bi";
 import { PiChats } from "react-icons/pi";
 
-// --- Styled Components ---
 
-// ==================================================================
-// ALTERAÇÃO 1: O cabeçalho agora é escondido em telas menores
-// ==================================================================
+// --- Styled Components (sem alterações aqui) ---
 const DesktopHeader = styled.nav`
   background-color: rgb(255, 240, 233);
   border-bottom: 1px solid #dbdbdb;
   position: sticky;
   top: 0;
   z-index: 10;
-  
-  // Esconde o cabeçalho inteiro em telas mobile
-  @media (max-width: 768px) {
-    display: none;
-  }
 `;
-
+// ... (todos os seus outros styled-components da Navbar)
 const NotificationsDropdown = styled.div`
   position: absolute;
   top: 100%;
@@ -81,15 +74,6 @@ const Logo = styled(Link)`
   }
 `;
 
-const BannerWrapper = styled.div`
-  display: flex;
-  justify-content: center;   // Alinha no eixo horizontal
-  align-items: center;       // Alinha no eixo vertical
-  height: 100vh;             // Ocupa altura total da tela
-  text-align: left;
-
-`;
-
 const Banner = styled(Link)`
   display: flex;
   justify-content: center;
@@ -124,39 +108,6 @@ const SearchWrapper = styled.div`
   width: 250px;
 `;
 
-// ==================================================================
-// ADIÇÃO 1: Componentes para o Rodapé Mobile
-// ==================================================================
-const MobileFooter = styled.footer`
-  display: none; // Escondido por padrão
-  
-  // Aparece apenas em telas mobile
-  @media (max-width: 768px) {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 60px;
-    background-color: rgb(255, 240, 233);
-    border-top: 1px solid #dbdbdb;
-    z-index: 10;
-  }
-
-  a {
-    color: #262626;
-    font-size: 1.6rem;
-    display: flex;
-    align-items: center;
-    position: relative;
-    flex: 1;
-    justify-content: center;
-    height: 100%;
-  }
-`;
-
 const TopMobileHeader = styled.div`
     display: none;
     @media (max-width: 768px) {
@@ -179,26 +130,6 @@ const MobileHeaderActions = styled.div`
   display: flex;
   align-items: center;
   gap: 16px; /* Espaçamento reduzido entre os ícones */
-`;
-
-const MobileSearchOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 60px;
-  background-color: rgb(255, 240, 233);
-  display: flex;
-  align-items: center;
-  padding: 0 15px;
-  z-index: 11;
-  transform: translateY(-100%);
-  transition: transform 0.3s ease-in-out;
-  border-bottom: 1px solid #dbdbdb;
-
-  ${props => props.isOpen && css`
-    transform: translateY(0);
-  `}
 `;
 
 const SearchInput = styled.input`
@@ -320,20 +251,21 @@ const NotificationItem = styled(Link)`
   }
 `;
 
+
 // --- Hook customizado ---
 const useOnClickOutside = (ref, handler) => {
-  useEffect(() => {
-    const listener = (event) => {
-      if (!ref.current || ref.current.contains(event.target)) return;
-      handler(event);
-    };
-    document.addEventListener('mousedown', listener);
-    document.addEventListener('touchstart', listener);
-    return () => {
-      document.removeEventListener('mousedown', listener);
-      document.removeEventListener('touchstart', listener);
-    };
-  }, [ref, handler]);
+    useEffect(() => {
+        const listener = (event) => {
+            if (!ref.current || ref.current.contains(event.target)) return;
+            handler(event);
+        };
+        document.addEventListener('mousedown', listener);
+        document.addEventListener('touchstart', listener);
+        return () => {
+            document.removeEventListener('mousedown', listener);
+            document.removeEventListener('touchstart', listener);
+        };
+    }, [ref, handler]);
 };
 
 // --- Componente Principal ---
@@ -341,10 +273,11 @@ const Navbar = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const location = useLocation();
-    
+    const isMobile = useMediaQuery('(max-width: 768px)');
+
+    // TODOS os hooks são chamados aqui no topo, incondicionalmente.
     const { user: loggedInUser } = useSelector((state) => state.auth);
     const { totalUnreadCount } = useSelector((state) => state.chat);
-
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [isFocused, setIsFocused] = useState(false);
@@ -356,62 +289,65 @@ const Navbar = () => {
     const dropdownRef = useRef();
     const searchOverlayRef = useRef();
     const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
-    
+
+    const isProfilePage = location.pathname.startsWith('/perfil/');
+
     useOnClickOutside(dropdownRef, () => setIsDropdownOpen(false));
     useOnClickOutside(searchOverlayRef, () => {
         setIsMobileSearchOpen(false);
-        setIsFocused(false); // Adicionado para limpar o estado
+        setIsFocused(false);
     });
 
+    // ... (resto dos seus useEffects)
     useEffect(() => {
-      const handleResize = () => setIsDesktop(window.innerWidth > 768);
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    useEffect(() => {
-        if (!loggedInUser) return;
-
-        dispatch(fetchChats());
-        
-        const fetchNotifications = async () => {
+        const handleResize = () => setIsDesktop(window.innerWidth > 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+      }, []);
+  
+      useEffect(() => {
+          if (!loggedInUser) return;
+  
+          dispatch(fetchChats());
+          
+          const fetchNotifications = async () => {
+              try {
+                  const { data } = await api.get('/notifications');
+                  setNotifications(data);
+                  setUnreadNotificationCount(data.filter(n => !n.read).length);
+              } catch (error) { console.error("Erro ao buscar notificações", error); }
+          };
+          fetchNotifications();
+          
+          const socket = io(process.env.REACT_APP_API_URL);
+          socket.emit('setup', loggedInUser);
+          
+          socket.on('newNotification', (newNotification) => {
+              setNotifications(prev => [newNotification, ...prev]);
+              setUnreadNotificationCount(prev => prev + 1);
+          });
+  
+          socket.on('messageReceived', (newMessage) => {
+              dispatch(updateChatStateFromSocket({ newMessage, loggedInUserId: loggedInUser._id }));
+          });
+  
+          return () => { socket.disconnect(); };
+      }, [loggedInUser, dispatch]);
+  
+      useEffect(() => {
+          if (!query.trim() || query.trim().length < 2) {
+            setResults([]);
+            return;
+          }
+          const delayDebounceFn = setTimeout(async () => {
             try {
-                const { data } = await api.get('/notifications');
-                setNotifications(data);
-                setUnreadNotificationCount(data.filter(n => !n.read).length);
-            } catch (error) { console.error("Erro ao buscar notificações", error); }
-        };
-        fetchNotifications();
-        
-        const socket = io(process.env.REACT_APP_API_URL);
-        socket.emit('setup', loggedInUser);
-        
-        socket.on('newNotification', (newNotification) => {
-            setNotifications(prev => [newNotification, ...prev]);
-            setUnreadNotificationCount(prev => prev + 1);
-        });
-
-        socket.on('messageReceived', (newMessage) => {
-            dispatch(updateChatStateFromSocket({ newMessage, loggedInUserId: loggedInUser._id }));
-        });
-
-        return () => { socket.disconnect(); };
-    }, [loggedInUser, dispatch]);
-
-    useEffect(() => {
-        if (!query.trim() || query.trim().length < 2) {
-          setResults([]);
-          return;
-        }
-        const delayDebounceFn = setTimeout(async () => {
-          try {
-            const { data } = await api.get(`/users/search?q=${query}`);
-            setResults(data);
-          } catch (error) { console.error("Erro ao buscar usuários", error); }
-        }, 300);
-    
-        return () => clearTimeout(delayDebounceFn);
-    }, [query, loggedInUser?.token]);
+              const { data } = await api.get(`/users/search?q=${query}`);
+              setResults(data);
+            } catch (error) { console.error("Erro ao buscar usuários", error); }
+          }, 300);
+      
+          return () => clearTimeout(delayDebounceFn);
+      }, [query, loggedInUser?.token]);
 
     const handleLogout = () => {
         dispatch(logout());
@@ -419,6 +355,7 @@ const Navbar = () => {
         navigate('/login');
     };
 
+    // ... (resto das suas funções handle, getNotificationLink, getNotificationText, etc)
     const addRecentSearch = (user) => {
         const newRecent = [user, ...recentSearches.filter(u => u._id !== user._id)].slice(0, 5);
         setRecentSearches(newRecent);
@@ -479,80 +416,77 @@ const Navbar = () => {
     };
 
     const SearchComponent = () => (
-    <div style={{ width: '100%', position: 'relative' }}>
-      <SearchInput
-        type="text"
-        placeholder="Buscar..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => setIsFocused(true)}
-        // O onBlur com setTimeout ajuda a garantir que o clique no resultado funcione antes do dropdown fechar
-        onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-      />
-
-      {/* Apenas um dropdown é renderizado, e seu conteúdo muda conforme a lógica abaixo */}
-      {isFocused && (
-        <SearchResultsDropdown>
-          {/* Lógica unificada: */}
-          {results.length > 0 && query.trim() !== '' ? (
-            // 1. Se houver resultados de busca, mostre-os.
-            results.map((user) => (
-              <SearchResultItem
-                key={user._id}
-                // Usamos onMouseDown para registrar o clique antes do onBlur do input
-                onMouseDown={() => handleResultClick(user)}
-              >
-                <img
-                  src={
-                    user.avatar.startsWith('http')
-                      ? user.avatar
-                      : `${API_URL}${user.avatar}`
-                  }
-                  alt={user.username}
-                />
-                <span>{user.username}</span>
-              </SearchResultItem>
-            ))
-          ) : query.length === 0 && recentSearches.length > 0 ? (
-            // 2. Senão, se o campo estiver vazio e houver buscas recentes, mostre as buscas recentes.
-            <>
-              <RecentSearchHeader>
-                <span>Recente</span>
-                <button onClick={clearRecentSearches}>Limpar tudo</button>
-              </RecentSearchHeader>
-              {recentSearches.map((user) => (
-                <SearchResultItem
-                  key={user._id}
-                  onMouseDown={() => handleResultClick(user)}
-                >
-                  <img
-                    src={
-                      user.avatar.startsWith('http')
-                        ? user.avatar
-                        : `${API_URL}${user.avatar}`
-                    }
-                    alt={user.username}
-                  />
-                  <span>{user.username}</span>
-                </SearchResultItem>
-              ))}
-            </>
-          ) : null /* 3. Caso contrário (buscando ou sem resultados), não mostre nada. */}
-        </SearchResultsDropdown>
-      )}
-    </div>
-  );
-
+        <div style={{ width: '100%', position: 'relative' }}>
+          <SearchInput
+            type="text"
+            placeholder="Buscar..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            // O onBlur com setTimeout ajuda a garantir que o clique no resultado funcione antes do dropdown fechar
+            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+          />
     
-    // Se não houver usuário logado, não renderiza nada
-    if (!loggedInUser) {
+          {/* Apenas um dropdown é renderizado, e seu conteúdo muda conforme a lógica abaixo */}
+          {isFocused && (
+            <SearchResultsDropdown>
+              {/* Lógica unificada: */}
+              {results.length > 0 && query.trim() !== '' ? (
+                // 1. Se houver resultados de busca, mostre-os.
+                results.map((user) => (
+                  <SearchResultItem
+                    key={user._id}
+                    // Usamos onMouseDown para registrar o clique antes do onBlur do input
+                    onMouseDown={() => handleResultClick(user)}
+                  >
+                    <img
+                      src={
+                        user.avatar.startsWith('http')
+                          ? user.avatar
+                          : `${API_URL}${user.avatar}`
+                      }
+                      alt={user.username}
+                    />
+                    <span>{user.username}</span>
+                  </SearchResultItem>
+                ))
+              ) : query.length === 0 && recentSearches.length > 0 ? (
+                // 2. Senão, se o campo estiver vazio e houver buscas recentes, mostre as buscas recentes.
+                <>
+                  <RecentSearchHeader>
+                    <span>Recente</span>
+                    <button onClick={clearRecentSearches}>Limpar tudo</button>
+                  </RecentSearchHeader>
+                  {recentSearches.map((user) => (
+                    <SearchResultItem
+                      key={user._id}
+                      onMouseDown={() => handleResultClick(user)}
+                    >
+                      <img
+                        src={
+                          user.avatar.startsWith('http')
+                            ? user.avatar
+                            : `${API_URL}${user.avatar}`
+                        }
+                        alt={user.username}
+                      />
+                      <span>{user.username}</span>
+                    </SearchResultItem>
+                  ))}
+                </>
+              ) : null /* 3. Caso contrário (buscando ou sem resultados), não mostre nada. */}
+            </SearchResultsDropdown>
+          )}
+        </div>
+      );
+
+    if (!loggedInUser || (isProfilePage && isMobile)) {
         return null;
     }
 
-    return (
-        <>
-            <DesktopHeader>
-                <NavContainer>
+    const NavContent = isDesktop ? (
+        <DesktopHeader>
+             <NavContainer>
                     <Logo to="/">
                         <img src={logoImage} alt="Aesthete Logo" />
                     </Logo>
@@ -630,13 +564,11 @@ const Navbar = () => {
                         </LogoutButton>
                     </NavLinks>
                 </NavContainer>
-            </DesktopHeader>
-
-            {/* --- CABEÇALHO SIMPLIFICADO E RODAPÉ PARA MOBILE --- */}
-            
-            {/* ADIÇÃO 2: Cabeçalho superior simplificado para mobile (Logo e Busca) */}
+        </DesktopHeader>
+    ) : (
+        <>
             <TopMobileHeader>
-              <Banner to="/">
+            <Banner to="/">
                 <img src={logoImage} alt="Logo" />
               </Banner>
 
@@ -693,21 +625,11 @@ const Navbar = () => {
                   </NavIconWrapper>
                 </Link>
               </MobileHeaderActions>
-          </TopMobileHeader>
-
-          <MobileSearchOverlay isOpen={isMobileSearchOpen} ref={searchOverlayRef}>
-            <IoArrowBack 
-                onClick={() => {
-                    setIsMobileSearchOpen(false);
-                    setIsFocused(false); // Adicionado para limpar o estado
-                }} 
-                style={{cursor: 'pointer', marginRight: '15px', fontSize: '1.6rem'}}
-            />
-            {/* O componente só será montado quando a busca mobile estiver aberta */}
-            {isMobileSearchOpen && <SearchComponent />}
-        </MobileSearchOverlay>
+            </TopMobileHeader>
         </>
     );
+
+    return NavContent;
 };
 
 export default Navbar;
