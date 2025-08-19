@@ -6,6 +6,9 @@ const MessageSchema = new mongoose.Schema({
         ref: 'Chat',
         required: true
     },
+    storyPreview: {
+        mediaUrl: { type: String }
+    },
     sender: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useStoryStatus } from '../context/StoryContext';
 import { FaHeart, FaComment } from 'react-icons/fa';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux'; 
@@ -207,9 +208,11 @@ const Avatar = styled.img`
   border-radius: 50%;
   object-fit: cover;
   cursor: ${props => props.hasStory ? 'pointer' : 'default'};
-  border: ${props => props.hasStory ? '4px solid rgb(254, 121, 13)' : '4px solid #fff'}; // Borda branca para destacar do banner
+  
+  border: 4px solid ${props => props.storyStatus === 'unviewed' ? 'rgb(254, 121, 13)' : (props.storyStatus === 'viewed' ? '#dbdbdb' : '#fff')};
+  
   padding: 3px;
-  background-color: #fff; // Fundo branco para a borda ficar visível
+  background-color: #fff;
 
   @media (max-width: 768px) {
     width: 80px;
@@ -531,9 +534,9 @@ const ProfilePage = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
+    const { storyFeed, getStoryStatus } = useStoryStatus();
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
-    // ... (resto dos seus estados)
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTitle, setModalTitle] = useState('');
     const [modalUsers, setModalUsers] = useState([]);
@@ -633,13 +636,13 @@ const ProfilePage = () => {
     };
 
     const openStoryViewer = async () => {
-        if (!profileData?.hasActiveStory) return;
-        try {
-            const { data } = await api.get(`/stories/user/${profileData.user._id}`);
-            setUserActiveStories(data);
-            setIsViewerOpen(true);
-        } catch (error) {
-            console.error("Erro ao buscar stories do usuário", error);
+        if (!storyStatus.hasStories) return;
+        
+        const userIndexInFeed = storyFeed.findIndex(group => group.userId === profileData.user._id);
+        
+        if (userIndexInFeed !== -1) {
+            setUserActiveStories(storyFeed); 
+            setIsViewerOpen({ isOpen: true, initialIndex: userIndexInFeed });
         }
     };
 
@@ -672,6 +675,8 @@ const ProfilePage = () => {
 
     if (loading) return <p style={{textAlign: 'center', marginTop: '40px'}}>Carregando perfil...</p>;
     if (!profileData) return <p style={{textAlign: 'center', marginTop: '40px'}}>Usuário não encontrado.</p>;
+
+    const storyStatus = getStoryStatus(profileData.user._id);
 
     const { user, posts, postCount, followerCount, followingCount, isFollowing, hasActiveStory } = profileData;
     
@@ -716,12 +721,13 @@ const ProfilePage = () => {
                 <ProfileHeader>
                     <TopSection>
                     <AvatarContainer onClick={openStoryViewer}>
-                        <Avatar
-                            src={getImageUrl(user.avatar) || `${API_URL}/uploads/avatars/default.jpg`}
-                            alt={`${user.username}'s avatar`}
-                            hasStory={hasActiveStory}
-                        />
-                    </AvatarContainer>
+                      <Avatar
+                          src={getImageUrl(user.avatar)}
+                          alt={`${user.username}'s avatar`}
+                          // Passa o status para o styled-component
+                          storyStatus={storyStatus.hasStories ? (storyStatus.allStoriesViewed ? 'viewed' : 'unviewed') : 'none'}
+                      />
+                  </AvatarContainer>
                     <ProfileInfo>
                         <UsernameRow>
                             <p>{user.username}</p>
@@ -853,12 +859,12 @@ const ProfilePage = () => {
                     )}
                 </Modal>
 
-                {isViewerOpen && userActiveStories && (
-                    <FullscreenStoryViewer
-                        allUsersStories={userActiveStories}
-                        initialUserIndex={0}
-                        onClose={() => setIsViewerOpen(false)}
-                    />
+                {isViewerOpen.isOpen && userActiveStories && (
+                <FullscreenStoryViewer
+                    allUsersStories={userActiveStories}
+                    initialUserIndex={isViewerOpen.initialIndex}
+                    onClose={() => setIsViewerOpen({ isOpen: false, initialIndex: 0 })}
+                />
                 )}
             </ProfileWrapper>
              {isMyProfile && (

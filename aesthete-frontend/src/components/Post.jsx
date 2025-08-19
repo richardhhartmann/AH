@@ -1,6 +1,7 @@
 // Post.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useStoryStatus } from '../context/StoryContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { fetchChats } from '../features/chat/chatSlice';
@@ -47,6 +48,9 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
     const [showReadMore, setShowReadMore] = useState(false);
     const captionRef = useRef(null);
 
+    const { storyFeed, getStoryStatus, openStoryViewer } = useStoryStatus();
+    const storyStatus = getStoryStatus(post.user._id);
+
     const [showAnimation, setShowAnimation] = useState(false);
     const animationTimeoutRef = useRef(null);
 
@@ -61,6 +65,14 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
             }, 800);
         }
         originalHandleLike();
+    };
+
+    const openAuthorStory = () => {
+        if (!storyStatus.hasStories) return;
+        const userIndexInFeed = storyFeed.findIndex(group => group.userId === post.user._id);
+        if (userIndexInFeed !== -1) {
+            openStoryViewer(userIndexInFeed);
+        }
     };
     
     useEffect(() => {
@@ -113,9 +125,18 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
     return (
         <S.PostContainer ref={ref}>
             <S.PostHeader>
-                <Link to={`/perfil/${post.user.username}`}>
+                <S.PostAvatarWrapper 
+                    to={`/perfil/${post.user.username}`}
+                    storyStatus={storyStatus.hasStories ? (storyStatus.allStoriesViewed ? 'viewed' : 'unviewed') : 'none'}
+                    onClick={(e) => {
+                        if (storyStatus.hasStories) {
+                            e.preventDefault(); // Impede a navegação para o perfil
+                            openAuthorStory();
+                        }
+                    }}
+                >
                     <img src={getImageUrl(post.user.avatar)} alt={`${post.user.username}'s avatar`} />
-                </Link>
+                </S.PostAvatarWrapper>
                 <S.UserInfoContainer>
                     <Link to={`/perfil/${post.user.username}`}>
                         <strong>{post.user.username}</strong>

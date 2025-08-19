@@ -3,9 +3,10 @@ import styled, { css, keyframes } from 'styled-components';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import api, { API_URL } from '../api/axios';
-import { FaTrash, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaTrash, FaChevronLeft, FaChevronRight, FaHeart } from 'react-icons/fa';
 import { BsThreeDots } from "react-icons/bs";
 import { TransitionGroup, CSSTransition } from 'react-transition-group';
+import { IoPaperPlaneOutline } from 'react-icons/io5';
 
 const formatTimeAgo = (dateString) => {
   if (!dateString) return '';
@@ -29,6 +30,68 @@ const formatTimeAgo = (dateString) => {
   return days === 1 ? '1 dia' : `${days} dias`;
 };
 
+const StoryActionsContainer = styled.div`
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  z-index: 1010;
+`;
+
+const ReplyInput = styled.input`
+  flex: 1;
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 1px solid #555;
+  border-radius: 20px;
+  padding: 10px 15px;
+  color: white;
+  font-size: 0.9rem;
+  outline: none;
+
+  &::placeholder {
+    color: #ccc;
+  }
+`;
+
+const ActionButton = styled.button`
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.8rem; /* Aumenta o tamanho do ícone */
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.7));
+  }
+`;
+
+const SentConfirmationPopup = styled.div`
+  position: absolute;
+  bottom: 100px; /* Posição acima da barra de resposta */
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  z-index: 1020;
+  animation: fadeInOut 2s ease-in-out;
+
+  @keyframes fadeInOut {
+    0% { opacity: 0; transform: translate(-50%, 10px); }
+    25% { opacity: 1; transform: translate(-50%, 0); }
+    75% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, 10px); }
+  }
+`;
 
 const FullscreenOverlay = styled.div`
   position: fixed; 
@@ -242,36 +305,72 @@ const FullscreenStoryViewer = ({ allUsersStories, initialUserIndex, onClose }) =
     const { user: loggedInUser } = useSelector((state) => state.auth);
     const [currentUserIndex, setCurrentUserIndex] = useState(initialUserIndex || 0);
     const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
-
+    const [storyData, setStoryData] = useState(allUsersStories);
     const STORY_DURATION = 5000;
     const [isPaused, setIsPaused] = useState(false);
     const timerIdRef = useRef(null);
     const startTimeRef = useRef(null);
     const remainingTimeRef = useRef(STORY_DURATION);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [replyText, setReplyText] = useState('');
+    const [isInputFocused, setIsInputFocused] = useState(false);
+    const [showSentConfirmation, setShowSentConfirmation] = useState(false);
+
+    const handleSendReply = async () => {
+        if (!currentStory || replyText.trim() === '') return;
+
+        try {
+            await api.post(`/stories/${currentStory._id}/reply`, { text: replyText });
+            setReplyText('');
+
+            // Ativa a notificação visual
+            setShowSentConfirmation(true);
+            setTimeout(() => setShowSentConfirmation(false), 2000); // Esconde após 2 segundos
+
+            // Mantém o story pausado, mas com o input desfocado
+            setIsInputFocused(false);
+
+        } catch (error) {
+            console.error("Erro ao enviar resposta do story", error);
+            alert("Não foi possível enviar a resposta. Tente novamente.");
+        }
+    };
 
     const handleNext = useCallback(() => {
-        const storiesOfCurrentUser = allUsersStories?.[currentUserIndex]?.stories;
+        const storiesOfCurrentUser = storyData?.[currentUserIndex]?.stories;
         if (currentStoryIndex < (storiesOfCurrentUser?.length || 0) - 1) {
             setCurrentStoryIndex(prev => prev + 1);
-        } else if (currentUserIndex < (allUsersStories?.length || 0) - 1) {
+        } else if (currentUserIndex < (storyData?.length || 0) - 1) {
             setCurrentUserIndex(prev => prev + 1);
             setCurrentStoryIndex(0);
         } else {
             onClose();
         }
-    }, [currentUserIndex, currentStoryIndex, allUsersStories, onClose]);
+    }, [currentUserIndex, currentStoryIndex, storyData, onClose]);
 
-    const currentUserStories = allUsersStories?.[currentUserIndex];
+    const currentUserStories = storyData?.[currentUserIndex];
     const currentStory = currentUserStories?.stories?.[currentStoryIndex];
 
     useEffect(() => {
-        if (!currentStory) return;
+      if (!currentStory) return;
 
-        clearTimeout(timerIdRef.current);
-        remainingTimeRef.current = STORY_DURATION;
-        setIsPaused(false);
-    }, [currentStory]);
+      try {
+          const viewed = JSON.parse(localStorage.getItem('viewedStories')) || [];
+
+          const viewedSet = new Set(viewed);
+
+          viewedSet.add(currentStory._id);
+
+          localStorage.setItem('viewedStories', JSON.stringify(Array.from(viewedSet)));
+
+      } catch (error) {
+          console.error("Falha ao salvar story como visto no localStorage", error);
+      }
+
+      clearTimeout(timerIdRef.current);
+      remainingTimeRef.current = STORY_DURATION;
+
+  }, [currentStory]);
 
     useEffect(() => {
         if (!currentStory) return;
@@ -298,7 +397,7 @@ const FullscreenStoryViewer = ({ allUsersStories, initialUserIndex, onClose }) =
             setCurrentStoryIndex(prev => prev - 1);
         } else if (currentUserIndex > 0) {
             const prevUserIndex = currentUserIndex - 1;
-            const storiesOfPrevUser = allUsersStories[prevUserIndex].stories;
+            const storiesOfPrevUser = storyData[prevUserIndex].stories;
             setCurrentUserIndex(prevUserIndex);
             setCurrentStoryIndex(storiesOfPrevUser.length - 1);
         }
@@ -332,6 +431,43 @@ const FullscreenStoryViewer = ({ allUsersStories, initialUserIndex, onClose }) =
       }
   };
 
+  const handleLike = async (e) => {
+    e.stopPropagation(); // Impede que o clique se propague e pause o story
+    if (!currentStory) return;
+
+    const storyId = currentStory._id;
+    
+    try {
+        const newStoryData = [...storyData];
+        const storyToUpdate = newStoryData[currentUserIndex].stories[currentStoryIndex];
+        const myId = loggedInUser._id;
+
+        // --- CORREÇÃO AQUI ---
+        // 1. Verificamos se a propriedade 'likes' existe. Se não, a criamos como um array vazio.
+        if (!storyToUpdate.likes) {
+            storyToUpdate.likes = [];
+        }
+        // A partir daqui, 'storyToUpdate.likes' tem a garantia de ser um array.
+        // --- FIM DA CORREÇÃO ---
+
+        const isLiked = storyToUpdate.likes.includes(myId);
+
+        if (isLiked) {
+            storyToUpdate.likes = storyToUpdate.likes.filter(id => id !== myId);
+        } else {
+            storyToUpdate.likes.push(myId);
+        }
+        setStoryData(newStoryData);
+
+        // Chama a API em segundo plano
+        await api.put(`/stories/${storyId}/like`);
+
+    } catch (error) {
+        console.error("Erro ao curtir o story", error);
+        // Opcional: reverter a UI em caso de erro
+    }
+};
+
     const isMyStory = currentUserStories.userId === loggedInUser?._id;
     const getImageUrl = (url) => url && (url.startsWith('http') ? url : `${API_URL}${url}`);
     const canGoPrev = currentUserIndex > 0 || currentStoryIndex > 0;
@@ -349,8 +485,8 @@ const FullscreenStoryViewer = ({ allUsersStories, initialUserIndex, onClose }) =
                         ref={nodeRef}
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={() => setIsPaused(true)}
-                        onMouseUp={() => setIsPaused(false)}
-                        onMouseLeave={() => { if (isPaused) setIsPaused(false); }}
+                        onMouseUp={() => { if (!isInputFocused) setIsPaused(false); }}
+                        onMouseLeave={() => { if (isPaused && !isInputFocused) setIsPaused(false); }}
                     >
                         <ProgressBarContainer>
                             {currentUserStories.stories.map((story, index) => (
@@ -392,9 +528,52 @@ const FullscreenStoryViewer = ({ allUsersStories, initialUserIndex, onClose }) =
                                 )}
                             </>
                         )}
+
+                        {showSentConfirmation && <SentConfirmationPopup>Enviado!</SentConfirmationPopup>}
                           
                         <StoryImage src={getImageUrl(currentStory.mediaUrl)} alt="Story" />
+                        { !isMyStory && (
+                          <StoryActionsContainer>
+                            <ReplyInput 
+                              placeholder="Enviar mensagem..." 
+                              onClick={e => e.stopPropagation()}
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              
+                              // ALTERE AS DUAS LINHAS ABAIXO
+                              onFocus={() => {
+                                  setIsPaused(true);
+                                  setIsInputFocused(true);
+                              }}
+                              onBlur={() => {
+                                  setIsPaused(false);
+                                  setIsInputFocused(false);
+                              }}
+                              
+                              onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleSendReply();
+                                  }
+                              }}
+                          />
+                          { replyText.trim() && (
+                            <>
+                              {/* Altere o botão de encaminhar para chamar a função de envio */}
+                              <ActionButton onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSendReply();
+                              }}>
+                                  <IoPaperPlaneOutline />
+                              </ActionButton>
+                            </>
+                          )}
 
+                          <ActionButton onClick={handleLike}>
+                              <FaHeart style={{ color: currentStory.likes?.includes(loggedInUser._id) ? '#ff3040' : 'white' }} />
+                          </ActionButton>
+                      </StoryActionsContainer>
+                      )}
                     </StoryContentWrapper>
                 </CSSTransition>
             </TransitionGroup>

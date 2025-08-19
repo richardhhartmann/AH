@@ -1,6 +1,9 @@
 const Story = require('../models/Story');
 const User = require('../models/User');
-const cloudinary = require('cloudinary').v2; // Importe o SDK do Cloudinary
+const Notification = require('../models/Notification');
+const Chat = require('../models/Chat');       // <-- IMPORTE O MODELO CHAT
+const Message = require('../models/Message'); // <-- IMPORTE O MODELO MESSAGE
+const cloudinary = require('cloudinary').v2;
 
 // @desc    Criar um novo story
 // @route   POST /api/stories
@@ -144,5 +147,99 @@ exports.getStoryById = async (req, res) => {
         res.json(story);
     } catch (error) {
         res.status(500).json({ message: 'Erro no servidor' });
+    }
+};
+
+// @desc    Curtir ou descurtir um story
+// @route   PUT /api/stories/:id/like
+exports.likeStory = async (req, res) => {
+    try {
+        const story = await Story.findById(req.params.id);
+
+        if (!story) {
+            return res.status(404).json({ message: 'Story não encontrado.' });
+        }
+
+        if (story.user.toString() === req.user.id) {
+            return res.status(400).json({ message: 'Você não pode curtir seu próprio story.' });
+        }
+
+        const isLiked = story.likes.includes(req.user.id);
+
+        if (isLiked) {
+            story.likes.pull(req.user.id);
+        } else {
+            story.likes.push(req.user.id);
+            
+            // Garante que a notificação só seja criada se não for o próprio autor
+            if (story.user.toString() !== req.user.id) {
+                await Notification.create({
+                    sender: req.user.id,
+                    recipient: story.user,
+                    type: 'like_story',
+                    story: story._id
+                });
+            }
+        }
+
+        await story.save();
+        res.json(story.likes);
+
+    } catch (error) {
+        console.error("ERRO AO CURTIR STORY:", error);
+        res.status(500).json({ message: 'Erro no servidor.' });
+    }
+};
+
+// @desc    Responder a um story com uma mensagem
+// @route   POST /api/stories/:id/reply
+exports.replyToStory = async (req, res) => {
+    try {
+        const { text } = req.body;
+        const senderId = req.user.id;
+        const storyId = req.params.id;
+
+        if (!text || text.trim() === '') {
+            return res.status(400).json({ message: 'O texto da resposta não pode estar vazio.' });
+        }
+
+        // 1. A variável 'story' é declarada e inicializada AQUI.
+        const story = await Story.findById(storyId);
+        if (!story) {
+            return res.status(404).json({ message: 'Story não encontrado.' });
+        }
+
+        const recipientId = story.user.toString();
+
+        if (senderId === recipientId) {
+            return res.status(400).json({ message: 'Você não pode responder ao seu próprio story.' });
+        }
+
+        // 2. A variável 'story' é usada DEPOIS de ser inicializada.
+        let chat = await Chat.findOne({
+            participants: { $all: [senderId, story.user] }
+        });
+
+        if (!chat) {
+            chat = await Chat.create({ participants: [senderId, story.user] });
+        }
+
+        const message = await Message.create({
+            sender: senderId,
+            content: text,
+            chat: chat._id,
+            storyPreview: {
+                mediaUrl: story.mediaUrl
+            }
+        });
+
+        chat.lastMessage = message._id;
+        await chat.save();
+
+        res.status(201).json({ message: 'Resposta enviada com sucesso.', data: message });
+
+    } catch (error) {
+        console.error("ERRO AO RESPONDER STORY:", error);
+        res.status(500).json({ message: 'Erro no servidor.' });
     }
 };

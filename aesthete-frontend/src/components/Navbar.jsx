@@ -24,7 +24,7 @@ const DesktopHeader = styled.nav`
   border-bottom: 1px solid #dbdbdb;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 999;
 `;
 // ... (todos os seus outros styled-components da Navbar)
 const NotificationsDropdown = styled.div`
@@ -122,7 +122,7 @@ const TopMobileHeader = styled.div`
         top: 0;
         left: 0;         /* ADICIONADO */
         width: 100%;     /* ADICIONADO */
-        z-index: 10;
+        z-index: 999;
     }
 `;
 
@@ -395,6 +395,7 @@ const Navbar = () => {
             case 'comment':
                 return `/post/${notification.post?._id}`;
             case 'follow':
+            case 'like_story':
                 return `/perfil/${notification.sender.username}`;
             default:
                 return '/';
@@ -410,6 +411,8 @@ const Navbar = () => {
                 return 'comentou na sua publicação.';
             case 'follow':
                 return 'começou a seguir você.';
+            case 'like_story':
+                return 'curtiu seu story.';
             default:
                 return '';
         }

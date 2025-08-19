@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { StoryProvider } from './context/StoryContext';
 import { useSelector } from 'react-redux';
 import styled from 'styled-components';
 
@@ -21,10 +22,10 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import NotificationPage from './pages/NotificationPage';
 
 const MainContainer = styled.main`
-  /* Em telas mobile, adiciona o espaçamento para o header e footer fixos */
+  padding-top: 60px;
+
   @media (max-width: 768px) {
-    padding-top: 60px;    /* Espaço para o header fixo */
-    padding-bottom: 60px; /* Espaço para o footer fixo */
+    padding-bottom: 60px; 
   }
 `;
 
@@ -33,6 +34,7 @@ function App() {
 
 return (
     <Router>
+      <StoryProvider>
       <Navbar />
       <MainContainer>
         <Routes>
@@ -56,6 +58,7 @@ return (
           <Route path="/redefinir-senha/:resettoken" element={<ResetPasswordPage />} />
         </Routes>
         </MainContainer>
+        </StoryProvider>
     </Router>
   );
 }

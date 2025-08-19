@@ -295,11 +295,22 @@ const importData = async () => {
 
         for (const user of createdUsers) {
             if (user.id === admin.id) {
-                user.following = allUsersExceptAdmin.map(u => u._id);
+                const numberOfUsersToFollow = Math.floor(allUsersExceptAdmin.length * 0.8);
+                const usersForAdminToFollow = getRandomSubset(allUsersExceptAdmin, numberOfUsersToFollow);
+                user.following = usersForAdminToFollow.map(u => u._id);
+
+                for (const followedUser of usersForAdminToFollow) {
+                    const targetUser = createdUsers.find(u => u.id === followedUser.id);
+                    if (targetUser && !targetUser.followers.includes(admin._id)) {
+                        targetUser.followers.push(admin._id);
+                    }
+                }
             } else {
                 user.followers.push(admin._id);
+                
                 const usersToFollow = getRandomSubset(allUsersExceptAdmin.filter(u => u.id !== user.id), Math.floor(Math.random() * 11) + 5);
                 user.following.push(...usersToFollow.map(u => u._id));
+                
                 for (const followedUser of usersToFollow) {
                     const targetUser = createdUsers.find(u => u.id === followedUser.id);
                     if (targetUser && !targetUser.followers.includes(user._id)) {
@@ -353,11 +364,9 @@ const importData = async () => {
         ];
 
         for (const post of createdPosts) {
-            // Lógica de curtidas
             const likers = getRandomSubset(allUsersExceptAdmin, Math.floor(Math.random() * (allUsersExceptAdmin.length - 5)) + 5);
             post.likes = likers.map(u => u._id);
 
-            // Lógica de comentários
             if (Math.random() > 0.3) { 
                 const commenters = getRandomSubset(allUsersExceptAdmin.filter(u => !u._id.equals(post.user)), Math.floor(Math.random() * 8) + 2);
                 

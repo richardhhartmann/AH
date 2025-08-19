@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useStoryStatus } from '../context/StoryContext';
 import { useSelector, useDispatch } from 'react-redux';
 import { useLocation, Link, useParams } from 'react-router-dom';
 import styled from 'styled-components';
@@ -6,7 +7,7 @@ import api, { API_URL } from '../api/axios';
 import io from 'socket.io-client';
 import { FiCheck, FiSend, FiMoreVertical, FiTrash2 } from "react-icons/fi";
 import { FaMicrophone } from 'react-icons/fa';
-import { IoArrowBack } from "react-icons/io5";
+import { IoArrowBack, IoCameraOutline } from "react-icons/io5";
 import { fetchChats, markChatAsReadInState, updateChatStateFromSocket, removeChatFromState } from '../features/chat/chatSlice'; 
 import AudioPlayer from '../components/AudioPlayer';
 
@@ -118,7 +119,8 @@ const Avatar = styled.img`
   height: 50px;
   border-radius: 50%;
   margin-right: 15px;
-  border: ${props => props.hasStory ? '3px solid rgb(254, 121, 13)' : '3px solid transparent'};
+  // Lógica de borda atualizada
+  border: 3px solid ${props => props.storyStatus === 'unviewed' ? 'rgb(254, 121, 13)' : (props.storyStatus === 'viewed' ? '#dbdbdb' : 'transparent')};
   padding: 2px;
 `;
 
@@ -236,6 +238,30 @@ const MessageBubble = styled.div`
   color: ${props => props.isMe ? 'white' : 'black'};
 `;
 
+const StoryPreviewWrapper = styled.div`
+  background-color: rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  border-radius: 12px;
+  margin-bottom: 8px; /* Espaçamento entre o preview e o texto da resposta */
+  border-left: 3px solid ${props => props.isMe ? 'rgba(255,255,255,0.5)' : 'rgb(254, 121, 13)'};
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const StoryPreviewImage = styled.img`
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+`;
+
+const StoryPreviewText = styled.span`
+  font-style: italic;
+  font-size: 0.85em;
+  color: ${props => props.isMe ? '#f0f0f0' : '#555'};
+`;
+
 const MessageForm = styled.form`
   display: flex;
   align-items: center;
@@ -290,6 +316,8 @@ const ChatPage = () => {
     const dispatch = useDispatch();
     const location = useLocation();
     const { chatId } = useParams();
+
+    const { storyFeed, getStoryStatus, openStoryViewer } = useStoryStatus();
 
     const { user: loggedInUser } = useSelector((state) => state.auth);
     const { chats } = useSelector((state) => state.chat);
@@ -541,19 +569,40 @@ const ChatPage = () => {
                 {chats.map(chat => {
                     const otherUser = getOtherUser(chat);
                     if (!otherUser) return null;
+
                     const isUserOnline = onlineUsers.includes(otherUser._id);
                     const isChatTyping = typingChats.includes(chat._id);
+                    const storyStatus = getStoryStatus(otherUser._id);
+
+                    // 1. LÓGICA PARA ABRIR O STORY (será usada no avatar)
+                    const handleAvatarClick = (e) => {
+                        e.stopPropagation(); // Impede que o clique "vaze" para a linha e abra o chat
+
+                        if (storyStatus.hasStories) {
+                            const userIndexInFeed = storyFeed.findIndex(group => group.userId === otherUser._id);
+                            if (userIndexInFeed !== -1) {
+                                openStoryViewer(userIndexInFeed);
+                            }
+                        }
+                    };
 
                     return (
-                        <ChatItem key={chat._id} onClick={() => handleSelectChat(chat)} isActive={selectedChat?._id === chat._id}>
-                            <AvatarWrapper>
+                        // 2. O CLIQUE NA LINHA AGORA SEMPRE ABRE O CHAT
+                        <ChatItem 
+                            key={chat._id} 
+                            onClick={() => handleSelectChat(chat)} 
+                            isActive={selectedChat?._id === chat._id}
+                        >
+                            {/* 3. O CLIQUE NO AVATAR AGORA ABRE O STORY */}
+                            <AvatarWrapper onClick={handleAvatarClick}>
                                 <Avatar 
                                     src={otherUser.avatar?.startsWith('http') ? otherUser.avatar : `${API_URL}${otherUser.avatar}`} 
                                     alt={otherUser.username}
-                                    hasStory={otherUser.hasActiveStory}
+                                    storyStatus={storyStatus.hasStories ? (storyStatus.allStoriesViewed ? 'viewed' : 'unviewed') : 'none'}
                                 />
                                 {isUserOnline && <OnlineIndicator />}
                             </AvatarWrapper>
+                            
                             <ChatInfo>
                                 {otherUser.username}
                                 {isChatTyping ? (
@@ -565,7 +614,12 @@ const ChatPage = () => {
                                         )}
                                         
                                         {chat.lastMessage ? (
-                                            chat.lastMessage.contentType === 'audio' ? (
+                                            chat.lastMessage.storyPreview?.mediaUrl ? (
+                                                <>
+                                                    <IoCameraOutline size={14} />
+                                                    <span>Respondeu ao story</span>
+                                                </>
+                                            ) : chat.lastMessage.contentType === 'audio' ? (
                                                 <>
                                                 <FaMicrophone size={14} />
                                                 <span>Mensagem de voz ({formatTime(chat.lastMessage.audioDuration)})</span>
@@ -579,7 +633,9 @@ const ChatPage = () => {
                                     </LastMessage>
                                 )}
                             </ChatInfo>
+
                             {chat.unreadCount > 0 && <UnreadBadge>{chat.unreadCount}</UnreadBadge>}
+                            
                             <MenuButton onClick={(e) => handleToggleMenu(e, chat._id)}>
                                 <FiMoreVertical />
                             </MenuButton>
@@ -610,19 +666,36 @@ const ChatPage = () => {
                             </Link>
                         </ChatWindowHeader>
                         <MessageList>
-                            {messages.map((msg, i) => (
-                                <MessageBubble key={msg._id || i} isMe={msg.sender._id === loggedInUser._id}>
-                                    {msg.contentType === 'audio' ? (
-                                        <AudioPlayer 
-                                            src={msg.content} 
-                                            duration={msg.audioDuration}
-                                            isMe={msg.sender._id === loggedInUser._id}
-                                        />
-                                    ) : (
-                                        msg.content
-                                    )}
-                                </MessageBubble>
-                            ))}
+                            {messages.map((msg, i) => {
+                                const isMe = msg.sender._id === loggedInUser._id;
+                                return (
+                                    <MessageBubble key={msg._id || i} isMe={isMe}>
+                                        {/* --- LÓGICA DE RENDERIZAÇÃO MODIFICADA ABAIXO --- */}
+
+                                        {/* 1. Se a mensagem tiver um preview de story, mostre-o */}
+                                        {msg.storyPreview?.mediaUrl && (
+                                            <StoryPreviewWrapper isMe={isMe}>
+                                                <StoryPreviewImage src={msg.storyPreview.mediaUrl.startsWith('http') ? msg.storyPreview.mediaUrl : `${API_URL}${msg.storyPreview.mediaUrl}`} />
+                                                <StoryPreviewText isMe={isMe}>
+                                                    {isMe ? "Você respondeu ao story" : "Respondeu ao seu story"}
+                                                </StoryPreviewText>
+                                            </StoryPreviewWrapper>
+                                        )}
+
+                                        {/* 2. Renderiza o conteúdo principal (áudio ou texto) */}
+                                        {msg.contentType === 'audio' ? (
+                                            <AudioPlayer 
+                                                src={msg.content} 
+                                                duration={msg.audioDuration}
+                                                isMe={isMe}
+                                            />
+                                        ) : (
+                                            msg.content
+                                        )}
+
+                                    </MessageBubble>
+                                );
+                            })}
                             <div ref={messagesEndRef} />
                         </MessageList>
                         <MessageForm onSubmit={sendMessage}>

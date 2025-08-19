@@ -242,12 +242,23 @@ exports.getUserSuggestions = async (req, res) => {
 exports.getTopPosters = async (req, res) => {
     try {
         const topPosters = await Post.aggregate([
+            // Estágio 1: Agrupa os posts por usuário e conta quantos posts cada um tem
             { $group: { _id: '$user', postCount: { $sum: 1 } } },
+
+            // Estágio 2: Filtra para incluir apenas usuários com mais de 1 post
+            { $match: { postCount: { $gt: 1 } } },
+
+            // Estágio 3: Ordena os usuários pelo número de posts em ordem decrescente
             { $sort: { postCount: -1 } },
-            { $limit: 3 },
+
+            // Estágio 4: Busca os detalhes completos do usuário na coleção 'users'
             { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'userDetails' } },
+            
+            // Estágio 5: Formata o resultado final
             { $project: { _id: 0, postCount: 1, user: { $arrayElemAt: ['$userDetails', 0] } } }
+            // REMOVEMOS O $limit: 3 para trazer todos os que satisfazem a condição
         ]);
+
         // Remove a senha e outros campos sensíveis do resultado
         const sanitizedPosters = topPosters.map(item => {
             if (item.user) {
@@ -256,7 +267,9 @@ exports.getTopPosters = async (req, res) => {
             }
             return item;
         });
+        
         res.json(sanitizedPosters);
+
     } catch (error) {
         console.error("Erro ao buscar top posters:", error);
         res.status(500).json({ message: 'Erro no servidor' });

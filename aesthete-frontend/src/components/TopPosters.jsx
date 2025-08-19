@@ -36,8 +36,41 @@ const Header = styled.h3`
 
 const UserList = styled.div`
   display: flex;
-  justify-content: space-around;
+  /* justifyContent: space-around; -> REMOVA ou COMENTE esta linha */
   align-items: flex-end;
+  overflow-x: auto; /* Adiciona a rolagem horizontal */
+  padding-bottom: 10px; /* Espaço para a barra de rolagem não cortar o conteúdo */
+  margin-bottom: -10px; /* Compensa o padding para manter o alinhamento */
+
+  /* Esconde a barra de rolagem para um visual mais limpo */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+`;
+
+// Novo container para o avatar e o ranking
+const AvatarWrapper = styled.div`
+  position: relative;
+  margin-bottom: 5px;
+`;
+
+// Novo componente para o número do ranking
+const RankingBadge = styled.div`
+  position: absolute;
+  top: 0px;
+  left: -5px;
+  background-color: rgb(254, 121, 13); /* Laranja */
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  z-index: 2;
 `;
 
 const UserPodium = styled(Link)`
@@ -48,6 +81,11 @@ const UserPodium = styled(Link)`
   color: #262626;
   width: 75px; /* Largura de cada item do pódio */
   text-align: center;
+  margin-right: 15px; /* Adiciona espaçamento entre os usuários */
+
+  &:last-child {
+    margin-right: 0; /* Remove a margem do último item */
+  }
 
   img {
     width: 50px;
@@ -61,8 +99,6 @@ const UserPodium = styled(Link)`
   &.gold {
     img {
       border-color: #ffd700;
-      width: 60px;
-      height: 60px;
     }
     strong { font-size: 0.9rem; }
   }
@@ -118,24 +154,35 @@ const TopPosters = () => {
 
     if (topUsers.length === 0) return null;
 
-    return (
-        <RankingContainer>
-            <Header><TrophyIcon /> Ranking de engajamento do mês</Header>
-            <UserList>
-                {topUsers.map((item, index) => (
-                    <UserPodium 
-                        key={item.user._id} 
-                        to={`/perfil/${item.user.username}`} 
-                        className={podiumClasses[index]}
-                    >
-                        <img src={item.user.avatar.startsWith('http') ? item.user.avatar : `${API_URL}${item.user.avatar}`} alt={item.user.username} />
-                        <strong>{item.user.username}</strong>
-                        <span>{item.postCount} posts</span>
-                    </UserPodium>
-                ))}
-            </UserList>
-        </RankingContainer>
-    );
+    // Em TopPosters.jsx, a função de renderização
+
+// ... (resto do componente)
+
+  return (
+      <RankingContainer>
+          <Header><TrophyIcon /> Ranking de engajamento do mês</Header>
+          <UserList>
+              {topUsers.map((item, index) => (
+                  <UserPodium 
+                      key={item.user._id} 
+                      to={`/perfil/${item.user.username}`} 
+                      className={podiumClasses[index]} // A classe gold/silver/bronze ainda pode ser usada se quiser
+                  >
+                      <AvatarWrapper>
+                          <RankingBadge>{index + 1}</RankingBadge>
+                          <img 
+                              src={item.user.avatar.startsWith('http') ? item.user.avatar : `${API_URL}${item.user.avatar}`} 
+                              alt={item.user.username} 
+                          />
+                      </AvatarWrapper>
+                      <strong>{item.user.username}</strong>
+                      {/* A linha abaixo foi REMOVIDA */}
+                      {/* <span>{item.postCount} posts</span> */}
+                  </UserPodium>
+              ))}
+          </UserList>
+      </RankingContainer>
+  );
 };
 
 export default TopPosters;

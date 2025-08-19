@@ -61,6 +61,22 @@ export const PostContainer = styled.div`
     }
 `;
 
+export const PostAvatarWrapper = styled(Link)`
+  position: relative;
+  flex-shrink: 0;
+  
+  img {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    margin-right: 14px;
+    object-fit: cover;
+    // Lógica da borda
+    border: 3px solid ${props => props.storyStatus === 'unviewed' ? 'rgb(254, 121, 13)' : 'transparent'};
+    padding: 2px;
+  }
+`;
+
 export const PostHeader = styled.div`
     display: flex;
     align-items: center;

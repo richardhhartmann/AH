@@ -6,7 +6,7 @@ const NotificationSchema = new mongoose.Schema({
     // O usuário que CAUSOU a notificação (quem curtiu, seguiu, etc.)
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     // O tipo de notificação
-    type: { type: String, enum: ['like', 'comment', 'follow'], required: true },
+    type: { type: String, enum: ['like', 'comment', 'follow', 'like_story'], required: true },
     // O post relacionado (se for like ou comment)
     post: { type: mongoose.Schema.Types.ObjectId, ref: 'Post' },
     // Status de leitura
