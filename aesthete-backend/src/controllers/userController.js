@@ -1,3 +1,5 @@
+// aesthete-backend/src/controllers/userController.js
+
 const User = require('../models/User');
 const Post = require('../models/Post');
 const Story = require('../models/Story');
@@ -33,10 +35,8 @@ exports.getUserProfile = async (req, res) => {
 
         const postsFromDb = await Post.find({ user: user._id }).sort({ createdAt: -1 });
         
-        // --- CORREÇÃO APLICADA AQUI ---
-        // Agora estamos populando o autor original do post salvo
         const savedPostsFromDb = await Post.find({ _id: { $in: user.savedPosts } })
-            .populate('user', 'username avatar') // Adiciona os dados do autor
+            .populate('user', 'username avatar')
             .sort({ createdAt: -1 });
 
         const posts = standardizePostMedia(postsFromDb);
@@ -49,7 +49,9 @@ exports.getUserProfile = async (req, res) => {
         posts.forEach(post => {
             if (post.media && post.media.some(m => m.mediaType === 'video')) {
                 videoCount++;
-            } else {
+            }
+            // A lógica foi ajustada para contar corretamente posts com fotos
+            if (post.media && post.media.some(m => m.mediaType === 'image')) {
                 photoCount++;
             }
         });
@@ -235,11 +237,15 @@ exports.getUserSuggestions = async (req, res) => {
     }
 };
 
+// @desc    Busca os usuários com mais postagens
+// @route   GET /api/users/top-posters
 exports.getTopPosters = async (req, res) => {
     try {
         const topPosters = await Post.aggregate([
             { $group: { _id: '$user', postCount: { $sum: 1 } } },
-            { $match: { postCount: { $gt: 1 } } },
+            // --- CORREÇÃO APLICADA AQUI ---
+            // Alterado de $gt: 1 para $gt: 0 para incluir usuários com apenas 1 post
+            { $match: { postCount: { $gt: 0 } } },
             { $sort: { postCount: -1 } },
             { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'userDetails' } },
             { $project: { _id: 0, postCount: 1, user: { $arrayElemAt: ['$userDetails', 0] } } }

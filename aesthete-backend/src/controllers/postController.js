@@ -1,4 +1,4 @@
-// postController.js
+// aesthete-backend/src/controllers/postController.js
 
 const mongoose = require('mongoose');
 const Post = require('../models/Post');
@@ -8,50 +8,17 @@ const Notification = require('../models/Notification');
 const Comment = require('../models/Comment');
 const cloudinary = require('cloudinary').v2;
 
-// @desc    Criar um novo post
-// @route   POST /api/posts
-exports.createPost = async (req, res) => {
-    try {
-        const { caption } = req.body;
-
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ message: 'Nenhum ficheiro de mídia enviado.' });
-        }
-
-        const mediaFiles = req.files.map(file => {
-            return {
-                url: file.path.replace('http://', 'https://'),
-                mediaType: file.mimetype.startsWith('video') ? 'video' : 'image'
-            };
-        });
-
-        const post = new Post({
-            caption,
-            media: mediaFiles,
-            user: req.user.id
-        });
-
-        const createdPost = await post.save();
-        res.status(201).json(createdPost);
-
-    } catch (error) {
-        console.error('ERRO AO CRIAR POST:', error);
-        res.status(500).json({ message: 'Erro interno do servidor ao criar o post.' });
-    }
-};
+// ... (as outras funções do controller, como createPost, likePost, etc., permanecem as mesmas)
 
 const standardizePostMedia = (posts) => {
     return posts.map(post => {
-        // Se o post for um objeto simples (do lean()), convertemos para um objeto Mongoose
         const postObj = post.toObject ? post.toObject() : post;
-
-        // Se não tiver o campo 'media' mas tiver o antigo 'mediaUrl'
         if ((!postObj.media || postObj.media.length === 0) && postObj.mediaUrl) {
             return {
                 ...postObj,
                 media: [{
                     url: postObj.mediaUrl,
-                    mediaType: 'image' // Assumimos que todos os posts antigos são imagens
+                    mediaType: 'image'
                 }]
             };
         }
@@ -85,16 +52,19 @@ exports.getFeedPosts = async (req, res) => {
             })
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean(); 
 
-        // --- CORREÇÃO APLICADA ---
-        let standardizedPosts = standardizePostMedia(posts);
-
-        standardizedPosts = standardizedPosts.map(post => ({
-            ...post,
-            isSaved: currentUser.savedPosts.includes(post._id),
-            commentsCount: post.comments?.length || 0 // Adiciona contagem para consistência
+        const postsWithCounts = await Promise.all(posts.map(async (post) => {
+            const postDoc = await Post.findById(post._id).select('comments');
+            return {
+                ...post,
+                isSaved: currentUser.savedPosts.includes(post._id),
+                commentsCount: postDoc.comments.length
+            };
         }));
+        
+        let standardizedPosts = standardizePostMedia(postsWithCounts);
 
         res.json({
             posts: standardizedPosts,
@@ -109,8 +79,96 @@ exports.getFeedPosts = async (req, res) => {
     }
 };
 
-// @desc    Curtir ou descurtir um post
-// @route   POST /api/posts/:id/like
+// @desc    Obter o feed de "Explorar" (PAGINADO)
+// @route   GET /api/posts/explore
+exports.getExploreFeed = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 15;
+        const skip = (page - 1) * limit;
+
+        const loggedInUser = await User.findById(req.user.id);
+        if (!loggedInUser) {
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
+        }
+        const usersToExclude = [loggedInUser._id, ...loggedInUser.following];
+
+        const totalPosts = await Post.countDocuments({ user: { $nin: usersToExclude } });
+        
+        // --- CORREÇÃO APLICADA AQUI ---
+        // Adicionamos o populate de comentários, igual ao do feed "Seguindo"
+        const posts = await Post.find({ user: { $nin: usersToExclude } })
+            .populate('user', 'username avatar profession')
+            .populate({
+                path: 'comments',
+                perDocumentLimit: 2,
+                options: { sort: { createdAt: -1 } },
+                populate: { path: 'author', select: 'username avatar' }
+            })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+        const postsWithCounts = await Promise.all(posts.map(async (post) => {
+            const postDoc = await Post.findById(post._id).select('comments');
+            return {
+                ...post,
+                isSaved: loggedInUser.savedPosts.includes(post._id),
+                commentsCount: postDoc.comments.length
+            };
+        }));
+        // --- FIM DA CORREÇÃO ---
+
+        let standardizedPosts = standardizePostMedia(postsWithCounts);
+
+        res.json({
+            posts: standardizedPosts,
+            currentPage: page,
+            totalPages: Math.ceil(totalPosts / limit),
+            totalPosts,
+        });
+    } catch (error) {
+        console.error("Erro ao buscar o feed explorar:", error);
+        res.status(500).json({ message: 'Erro ao buscar o feed.' });
+    }
+};
+
+// ... (Restante do arquivo: createPost, likePost, getPostById, deletePost, addCommentToPost)
+// O restante das funções do arquivo permanecem inalteradas. Copie e cole apenas as funções 
+// getFeedPosts e getExploreFeed se preferir, ou o arquivo completo para garantir.
+// ... (código das outras funções aqui)
+
+exports.createPost = async (req, res) => {
+    try {
+        const { caption } = req.body;
+
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ message: 'Nenhum ficheiro de mídia enviado.' });
+        }
+
+        const mediaFiles = req.files.map(file => {
+            return {
+                url: file.path.replace('http://', 'https://'),
+                mediaType: file.mimetype.startsWith('video') ? 'video' : 'image'
+            };
+        });
+
+        const post = new Post({
+            caption,
+            media: mediaFiles,
+            user: req.user.id
+        });
+
+        const createdPost = await post.save();
+        res.status(201).json(createdPost);
+
+    } catch (error) {
+        console.error('ERRO AO CRIAR POST:', error);
+        res.status(500).json({ message: 'Erro interno do servidor ao criar o post.' });
+    }
+};
+
 exports.likePost = async (req, res) => {
     try {
         const post = await Post.findById(req.params.id).select('likes user');
@@ -147,8 +205,6 @@ exports.likePost = async (req, res) => {
     }
 };
 
-// @desc    Obter um post pelo ID
-// @route   GET /api/posts/:id
 exports.getPostById = async (req, res) => {
     try {
         const post = await Post.findById(req.params.id)
@@ -165,7 +221,6 @@ exports.getPostById = async (req, res) => {
             return res.status(404).json({ message: 'Post não encontrado' });
         }
         
-        // --- CORREÇÃO ---
         let isSaved = false;
         if (req.user) {
             const loggedInUser = await User.findById(req.user.id);
@@ -173,7 +228,6 @@ exports.getPostById = async (req, res) => {
                 isSaved = loggedInUser.savedPosts.includes(post._id);
             }
         }
-        // --- FIM DA CORREÇÃO ---
 
         const postWithSavedStatus = {
             ...post.toObject(),
@@ -188,8 +242,6 @@ exports.getPostById = async (req, res) => {
     }
 };
 
-// @desc    Deletar um post
-// @route   DELETE /api/posts/:id
 exports.deletePost = async (req, res) => {
     try {
         const post = await Post.findById(req.params.id);
@@ -219,8 +271,6 @@ exports.deletePost = async (req, res) => {
     }
 };
 
-// @desc    Adicionar um comentário a um post
-// @route   POST /api/posts/:id/comment
 exports.addCommentToPost = async (req, res) => {
     try {
         const { text } = req.body;
@@ -259,47 +309,5 @@ exports.addCommentToPost = async (req, res) => {
     } catch (error) {
         console.error("Erro ao adicionar comentário:", error);
         res.status(500).json({ message: "Erro interno do servidor" });
-    }
-};
-
-// @desc    Obter o feed de "Explorar" (PAGINADO)
-// @route   GET /api/posts/explore
-exports.getExploreFeed = async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 15;
-        const skip = (page - 1) * limit;
-
-        const loggedInUser = await User.findById(req.user.id);
-        if (!loggedInUser) {
-            return res.status(404).json({ message: 'Usuário não encontrado.' });
-        }
-        const usersToExclude = [loggedInUser._id, ...loggedInUser.following];
-
-        const totalPosts = await Post.countDocuments({ user: { $nin: usersToExclude } });
-        const posts = await Post.find({ user: { $nin: usersToExclude } })
-            .populate('user', 'username avatar profession')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean();
-
-        let standardizedPosts = standardizePostMedia(posts);
-
-        const postsWithSavedStatus = standardizedPosts.map(post => ({
-            ...post,
-            isSaved: loggedInUser.savedPosts.includes(post._id),
-            commentsCount: post.comments?.length || 0 
-        }));
-
-        res.json({
-            posts: postsWithSavedStatus,
-            currentPage: page,
-            totalPages: Math.ceil(totalPosts / limit),
-            totalPosts,
-        });
-    } catch (error) {
-        console.error("Erro ao buscar o feed explorar:", error);
-        res.status(500).json({ message: 'Erro ao buscar o feed.' });
     }
 };

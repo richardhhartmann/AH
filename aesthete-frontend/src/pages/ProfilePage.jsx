@@ -1,15 +1,17 @@
+// aesthete-frontend/src/pages/ProfilePage.jsx
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStoryStatus } from '../context/StoryContext';
 import { FaHeart, FaComment, FaBookmark } from 'react-icons/fa';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux'; 
+import { useSelector, useDispatch } from 'react-redux';
 import { fetchChats } from '../features/chat/chatSlice';
 import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import Modal from '../components/Modal';
 import FullscreenStoryViewer from '../components/FullscreenStoryViewer';
 import { FaPhotoVideo, FaVideo, FaTh } from 'react-icons/fa';
-import { GoGear } from "react-icons/go"; 
+import { GoGear } from "react-icons/go";
 import { BsChat, BsChatFill } from "react-icons/bs";
 import { IoAdd } from "react-icons/io5";
 import { IoIosArrowBack } from "react-icons/io";
@@ -577,14 +579,17 @@ const ProfilePage = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
-    const { storyFeed, getStoryStatus, openStoryViewer } = useStoryStatus();
+    const { getStoryStatus, refreshViewedStories } = useStoryStatus(); // Removido openStoryViewer do contexto aqui
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTitle, setModalTitle] = useState('');
     const [modalUsers, setModalUsers] = useState([]);
+    
+    // --- ESTADOS LOCAIS PARA O VISUALIZADOR DE STORY ---
     const [userActiveStories, setUserActiveStories] = useState(null);
     const [isViewerOpen, setIsViewerOpen] = useState(false);
+    
     const [activeTab, setActiveTab] = useState('posts');
     const [mediaFilter, setMediaFilter] = useState('all');
 
@@ -613,6 +618,26 @@ const ProfilePage = () => {
             fetchProfile();
         }
     }, [loggedInUser, fetchProfile]);
+
+    // --- NOVA FUNÇÃO PARA ABRIR O STORY DO PERFIL ATUAL ---
+    const handleAvatarClick = async () => {
+        if (!profileData?.hasActiveStory) return;
+        try {
+            const { data } = await api.get(`/stories/user/${profileData.user._id}`);
+            if (data && data.length > 0) {
+                setUserActiveStories(data);
+                setIsViewerOpen(true);
+            }
+        } catch (error) {
+            console.error("Erro ao buscar stories do usuário", error);
+        }
+    };
+    
+    const handleCloseViewer = () => {
+        setIsViewerOpen(false);
+        setUserActiveStories(null);
+        refreshViewedStories(); // Atualiza o status global de visualização
+    };
 
     const handleFollow = async () => {
         if (!profileData) return;
@@ -652,17 +677,13 @@ const ProfilePage = () => {
         }
     };
     
-    // ALTERAÇÃO 1: A função agora aceita um 'type' para saber qual modal está sendo aberto.
     const processModalUsers = (users, type) => {
         const usersWithFollowStatus = users.map(user => {
             let isFollowedByMe;
 
-            // Se for o meu perfil e eu estiver vendo a lista de "Seguindo",
-            // então, por definição, eu sigo todos nessa lista.
             if (isMyProfile && type === 'following') {
                 isFollowedByMe = true;
             } else {
-                // Para todos os outros casos, usa a lógica original.
                 isFollowedByMe = loggedInUser?.following?.includes(user._id);
             }
             
@@ -687,7 +708,6 @@ const ProfilePage = () => {
         setIsModalOpen(true);
         try {
             const { data } = await api.get(`/users/${profileData.user._id}/followers`);
-            // ALTERAÇÃO 2: Passa o tipo 'followers' para a função de processamento.
             processModalUsers(data, 'followers');
         } catch (error) {
             console.error("Erro ao buscar seguidores", error);
@@ -700,7 +720,6 @@ const ProfilePage = () => {
         setIsModalOpen(true);
         try {
             const { data } = await api.get(`/users/${profileData.user._id}/following`);
-            // ALTERAÇÃO 3: Passa o tipo 'following' para a função de processamento.
             processModalUsers(data, 'following');
         } catch (error) {
             console.error("Erro ao buscar usuários que segue", error);
@@ -767,12 +786,12 @@ const ProfilePage = () => {
                 <BannerContainer src={getImageUrl(user.banner)} />
                 <ProfileHeader>
                     <TopSection>
-                    <AvatarContainer onClick={() => openStoryViewer(profileData.user._id)}> 
+                    <AvatarContainer onClick={handleAvatarClick}> 
                       <Avatar
                           src={getImageUrl(user.avatar)}
                           alt={`${user.username}'s avatar`}
-                          // Passa o status para o styled-component
                           storyStatus={storyStatus.hasStories ? (storyStatus.allStoriesViewed ? 'viewed' : 'unviewed') : 'none'}
+                          hasStory={storyStatus.hasStories}
                       />
                   </AvatarContainer>
                     <ProfileInfo>
@@ -852,24 +871,33 @@ const ProfilePage = () => {
                 </ProfileHeader>
 
                 <Tabs>
-                    <Tab active={activeTab === 'posts'} onClick={() => setActiveTab('posts')}>PUBLICAÇÕES</Tab>
-                    {isMyProfile && <Tab active={activeTab === 'saved'} onClick={() => setActiveTab('saved')}>SALVOS</Tab>}
-                </Tabs>
-                {activeTab === 'posts' && (
-                <FilterTabs>
-                    <FilterTab active={mediaFilter === 'all'} onClick={() => setMediaFilter('all')}>
-                        <FaTh /> Tudo ({postCount})
-                    </FilterTab>
-                    <FilterTab active={mediaFilter === 'photos'} onClick={() => setMediaFilter('photos')}>
-                        <FaPhotoVideo /> Fotos ({photoCount})
-                    </FilterTab>
-                    <FilterTab active={mediaFilter === 'videos'} onClick={() => setMediaFilter('videos')}>
-                        <FaVideo /> Vídeos ({videoCount})
-                    </FilterTab>
-                </FilterTabs>
-            )}
+                  {isMyProfile && (
+                      <Tab active={activeTab === 'posts'} onClick={() => setActiveTab('posts')}>
+                          PUBLICAÇÕES
+                      </Tab>
+                  )}
+                  {isMyProfile && (
+                      <Tab active={activeTab === 'saved'} onClick={() => setActiveTab('saved')}>
+                          SALVOS
+                      </Tab>
+                  )}
+              </Tabs>
+
+              {activeTab === 'posts' && isMyProfile && (
+                  <FilterTabs>
+                      <FilterTab active={mediaFilter === 'all'} onClick={() => setMediaFilter('all')}>
+                          <FaTh /> Tudo ({postCount})
+                      </FilterTab>
+                      <FilterTab active={mediaFilter === 'photos'} onClick={() => setMediaFilter('photos')}>
+                          <FaPhotoVideo /> Fotos ({photoCount})
+                      </FilterTab>
+                      <FilterTab active={mediaFilter === 'videos'} onClick={() => setMediaFilter('videos')}>
+                          <FaVideo /> Vídeos ({videoCount})
+                      </FilterTab>
+                  </FilterTabs>
+              )}
                 <PostGrid>
-                {displayPosts.map((post, index) => { // Adicionado o 'index'
+                {displayPosts.map((post, index) => { 
                     if (!post || !post.media || post.media.length === 0) {
                         return null; 
                     }
@@ -877,14 +905,11 @@ const ProfilePage = () => {
                     const firstMedia = post.media[0];
 
                     return (
-                        // --- INÍCIO DA ALTERAÇÃO ---
                         <Link 
                           key={post._id} 
                           to={`/post/${post._id}`}
-                          // Envia a lista de posts, o índice, E O USUÁRIO DO PERFIL
                           state={{ userPosts: displayPosts, postIndex: index, profileUser: user }}
                       >
-                        {/* --- FIM DA ALTERAÇÃO --- */}
                             <PostThumbnailContainer>
                               {firstMedia.mediaType === 'video' ? (
                                   <PostVideo 
@@ -892,7 +917,7 @@ const ProfilePage = () => {
                                       muted 
                                       loop 
                                       autoPlay 
-                                      playsInline // Importante para autoplay no mobile
+                                      playsInline
                                   />
                               ) : (
                                   <PostImage src={getImageUrl(firstMedia.url)} alt={post.caption} />
@@ -929,7 +954,6 @@ const ProfilePage = () => {
                                         <Link to={`/perfil/${user.username}`} onClick={() => setIsModalOpen(false)}>
                                             <strong>{user.username}</strong>
                                         </Link>
-                                        {/* ALTERAÇÃO 4: Adiciona a profissão abaixo do username. */}
                                         {user.profession && (
                                             <UserProfessionModal>{user.profession}</UserProfessionModal>
                                         )}
@@ -951,12 +975,12 @@ const ProfilePage = () => {
                     )}
                 </Modal>
 
-                {isViewerOpen.isOpen && userActiveStories && (
-                <FullscreenStoryViewer
-                    allUsersStories={userActiveStories}
-                    initialUserIndex={isViewerOpen.initialIndex}
-                    onClose={() => setIsViewerOpen({ isOpen: false, initialIndex: 0 })}
-                />
+                {isViewerOpen && userActiveStories && (
+                    <FullscreenStoryViewer
+                        allUsersStories={userActiveStories}
+                        initialUserIndex={0}
+                        onClose={handleCloseViewer}
+                    />
                 )}
             </ProfileWrapper>
              {isMyProfile && (
