@@ -20,6 +20,19 @@ const likeAnimation = keyframes`
 export const PostImageContainer = styled.div`
   position: relative; // Essencial para posicionar o ícone de animação
   cursor: pointer;
+  background-color: \#000;
+
+  padding-bottom: ${props => props.aspectRatio ? `${props.aspectRatio * 100}%` : '100%'}; /* Padrão 1:1 se a proporção não estiver definida \*/
+  height: 0;
+  overflow: hidden;
+
+  & \> div { /\* O container direto do elemento de mídia */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  }
 `;
 
 // Estilo para o ícone animado
@@ -171,12 +184,8 @@ export const DeleteButton = styled.button`
     font-size: 0.9rem;
 `;
 
-export const PostImage = styled.img`
-    width: 100%;
-    height: auto;
-    object-fit: cover;
-    cursor: pointer;
-`;
+export const PostImage = styled.img`/* --- INÍCIO DA ALTERAÇÃO --- */ width: 100%; height: 100%; object-fit: contain; /* Garante que a imagem inteira caiba no container */ /* --- FIM DA ALTERAÇÃO --- */`;
+
 
 export const PostActions = styled.div`
     display: flex;
@@ -306,4 +315,40 @@ export const PostFooter = styled.div`
         font-size: 0.8rem;
         cursor: pointer;
     }
+`;
+
+export const PostVideo = styled.video`/* --- INÍCIO DA ALTERAÇÃO --- */ width: 100%; height: 100%; object-fit: contain; /* Garante que o vídeo inteiro caiba no container */ /* --- FIM DA ALTERAÇÃO --- */`;
+
+export const CarouselButton = styled.button`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  ${props => props.left ? 'left: 10px;' : 'right: 10px;'}
+  background-color: rgba(255, 255, 255, 0.7);
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+`;
+
+export const CarouselDots = styled.div`
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  z-index: 10;
+`;
+
+export const Dot = styled.span`
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: ${props => props.active ? 'rgb(254, 121, 13)' : 'rgba(255, 255, 255, 0.7)'};
 `;

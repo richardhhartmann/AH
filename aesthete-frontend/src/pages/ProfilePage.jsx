@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStoryStatus } from '../context/StoryContext';
-import { FaHeart, FaComment } from 'react-icons/fa';
+import { FaHeart, FaComment, FaBookmark } from 'react-icons/fa';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux'; 
 import { fetchChats } from '../features/chat/chatSlice';
@@ -8,11 +8,12 @@ import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import Modal from '../components/Modal';
 import FullscreenStoryViewer from '../components/FullscreenStoryViewer';
-import { LikedIconPreview } from '../components/Icons';
+import { FaPhotoVideo, FaVideo, FaTh } from 'react-icons/fa';
 import { GoGear } from "react-icons/go"; 
 import { BsChat, BsChatFill } from "react-icons/bs";
 import { IoAdd } from "react-icons/io5";
 import { IoIosArrowBack } from "react-icons/io";
+import { HeartIcon, LikedIcon, LikedIconPreview, CommentIcon } from '../components/Icons';
 
 // --- Styled Components (sem alterações) ---
 
@@ -28,6 +29,25 @@ const ChatIconWrapper = styled.div`
     position: absolute;
     transition: opacity 0.3s ease-in-out;
   }
+`;
+
+const FilterTabs = styled.div`
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding-top: 15px;
+`;
+
+const FilterTab = styled.button`
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: ${props => props.active ? '600' : '400'};
+    color: ${props => props.active ? 'rgb(254, 121, 13)' : '#8e8e8e'};
+    display: flex;
+    align-items: center;
+    gap: 5px;
 `;
 
 const MobileProfileHeader = styled.header`
@@ -159,10 +179,10 @@ const FloatingCreateButton = styled(Link)`
     align-items: center;
     justify-content: center;
     position: fixed;
-    bottom: 80px; // Posição acima do footer de navegação
+    bottom: 50px; // Posição acima do footer de navegação
     right: 20px;
-    width: 80px;
-    height: 80px;
+    width: 60px;
+    height: 60px;
     background-color: rgb(254, 121, 13);
     color: white;
     border-radius: 50%;
@@ -209,7 +229,7 @@ const Avatar = styled.img`
   object-fit: cover;
   cursor: ${props => props.hasStory ? 'pointer' : 'default'};
   
-  border: 4px solid ${props => props.storyStatus === 'unviewed' ? 'rgb(254, 121, 13)' : (props.storyStatus === 'viewed' ? '#dbdbdb' : '#fff')};
+  border: 2px solid ${props => props.storyStatus === 'unviewed' ? 'rgb(254, 121, 13)' : (props.storyStatus === 'viewed' ? '#dbdbdb' : '#fff')};
   
   padding: 3px;
   background-color: #fff;
@@ -415,7 +435,6 @@ const PostGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
-  border-top: 1px solid #dbdbdb;
   padding-top: 15px;
 
   @media (min-width: 769px) {
@@ -429,6 +448,13 @@ const PostImage = styled.img`
   height: 100%;
   object-fit: cover;
   /* A propriedade 'transition' foi removida para efeito instantâneo */
+`;
+
+const PostVideo = styled.video`
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 `;
 
 const PostStats = styled.div`
@@ -525,6 +551,23 @@ const FollowButtonModal = styled.button`
   }
 `;
 
+const Tabs = styled.div`
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid #dbdbdb;
+    margin-top: 15px;
+`;
+
+const Tab = styled.button`
+    background: none;
+    border: none;
+    padding: 15px;
+    cursor: pointer;
+    font-weight: ${props => props.active ? '600' : '400'};
+    color: ${props => props.active ? '#262626' : '#8e8e8e'};
+    border-top: ${props => props.active ? '1px solid #262626' : 'none'};
+    margin-top: -1px;
+`;
 
 // --- Componente Principal ---
 const ProfilePage = () => {
@@ -534,7 +577,7 @@ const ProfilePage = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
-    const { storyFeed, getStoryStatus } = useStoryStatus();
+    const { storyFeed, getStoryStatus, openStoryViewer } = useStoryStatus();
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -542,6 +585,9 @@ const ProfilePage = () => {
     const [modalUsers, setModalUsers] = useState([]);
     const [userActiveStories, setUserActiveStories] = useState(null);
     const [isViewerOpen, setIsViewerOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState('posts');
+    const [mediaFilter, setMediaFilter] = useState('all');
+
 
     const isMyProfile = loggedInUser?._id === profileData?.user?._id;
 
@@ -635,17 +681,6 @@ const ProfilePage = () => {
         setModalUsers(usersWithFollowStatus);
     };
 
-    const openStoryViewer = async () => {
-        if (!storyStatus.hasStories) return;
-        
-        const userIndexInFeed = storyFeed.findIndex(group => group.userId === profileData.user._id);
-        
-        if (userIndexInFeed !== -1) {
-            setUserActiveStories(storyFeed); 
-            setIsViewerOpen({ isOpen: true, initialIndex: userIndexInFeed });
-        }
-    };
-
     const openFollowersModal = async () => {
         if (!profileData || profileData.followerCount === 0) return;
         setModalTitle('Seguidores');
@@ -678,7 +713,19 @@ const ProfilePage = () => {
 
     const storyStatus = getStoryStatus(profileData.user._id);
 
-    const { user, posts, postCount, followerCount, followingCount, isFollowing, hasActiveStory } = profileData;
+    const { user, posts, postCount, followerCount, followingCount, photoCount, videoCount, isFollowing, hasActiveStory, savedPosts } = profileData;
+
+    const filteredPosts = posts.filter(post => {
+        if (mediaFilter === 'photos') {
+            return post.media.every(m => m.mediaType === 'image');
+        }
+        if (mediaFilter === 'videos') {
+            return post.media.some(m => m.mediaType === 'video');
+        }
+        return true; // 'all'
+    });
+
+    const displayPosts = activeTab === 'posts' ? filteredPosts : savedPosts;
     
     const getImageUrl = (url) => {
         if (!url) return '';
@@ -720,7 +767,7 @@ const ProfilePage = () => {
                 <BannerContainer src={getImageUrl(user.banner)} />
                 <ProfileHeader>
                     <TopSection>
-                    <AvatarContainer onClick={openStoryViewer}>
+                    <AvatarContainer onClick={() => openStoryViewer(profileData.user._id)}> 
                       <Avatar
                           src={getImageUrl(user.avatar)}
                           alt={`${user.username}'s avatar`}
@@ -804,11 +851,55 @@ const ProfilePage = () => {
                 </MobileOnly>
                 </ProfileHeader>
 
+                <Tabs>
+                    <Tab active={activeTab === 'posts'} onClick={() => setActiveTab('posts')}>PUBLICAÇÕES</Tab>
+                    {isMyProfile && <Tab active={activeTab === 'saved'} onClick={() => setActiveTab('saved')}>SALVOS</Tab>}
+                </Tabs>
+                {activeTab === 'posts' && (
+                <FilterTabs>
+                    <FilterTab active={mediaFilter === 'all'} onClick={() => setMediaFilter('all')}>
+                        <FaTh /> Tudo ({postCount})
+                    </FilterTab>
+                    <FilterTab active={mediaFilter === 'photos'} onClick={() => setMediaFilter('photos')}>
+                        <FaPhotoVideo /> Fotos ({photoCount})
+                    </FilterTab>
+                    <FilterTab active={mediaFilter === 'videos'} onClick={() => setMediaFilter('videos')}>
+                        <FaVideo /> Vídeos ({videoCount})
+                    </FilterTab>
+                </FilterTabs>
+            )}
                 <PostGrid>
-                    {posts.map(post => (
-                        <Link key={post._id} to={`/post/${post._id}`}>
+                {displayPosts.map((post, index) => { // Adicionado o 'index'
+                    if (!post || !post.media || post.media.length === 0) {
+                        return null; 
+                    }
+                    
+                    const firstMedia = post.media[0];
+
+                    return (
+                        // --- INÍCIO DA ALTERAÇÃO ---
+                        <Link 
+                          key={post._id} 
+                          to={`/post/${post._id}`}
+                          // Envia a lista de posts, o índice, E O USUÁRIO DO PERFIL
+                          state={{ userPosts: displayPosts, postIndex: index, profileUser: user }}
+                      >
+                        {/* --- FIM DA ALTERAÇÃO --- */}
                             <PostThumbnailContainer>
-                                <PostImage src={getImageUrl(post.mediaUrl)} alt={post.caption} />
+                              {firstMedia.mediaType === 'video' ? (
+                                  <PostVideo 
+                                      src={getImageUrl(firstMedia.url)} 
+                                      muted 
+                                      loop 
+                                      autoPlay 
+                                      playsInline // Importante para autoplay no mobile
+                                  />
+                              ) : (
+                                  <PostImage src={getImageUrl(firstMedia.url)} alt={post.caption} />
+                              )}
+                                
+                                {post.media.some(m => m.mediaType === 'video') && <FaVideo style={{ position: 'absolute', top: 8, right: 8, color: 'white', zIndex: 1, filter: 'drop-shadow(0 0 2px black)' }}/>}
+                                
                                 <PostOverlay>
                                     <PostStats>
                                         <span>
@@ -821,8 +912,9 @@ const ProfilePage = () => {
                                 </PostOverlay>
                             </PostThumbnailContainer>
                         </Link>
-                    ))}
-                </PostGrid>
+                    );
+                })}
+            </PostGrid>
 
                 <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalTitle}>
                     {modalUsers.length > 0 ? (

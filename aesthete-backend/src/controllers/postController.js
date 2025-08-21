@@ -1,6 +1,6 @@
 // postController.js
 
-const mongoose = require('mongoose'); 
+const mongoose = require('mongoose');
 const Post = require('../models/Post');
 const User = require('../models/User');
 const Ad = require('../models/Ad');
@@ -14,16 +14,20 @@ exports.createPost = async (req, res) => {
     try {
         const { caption } = req.body;
 
-        if (!req.file) {
-            return res.status(400).json({ message: 'Nenhum arquivo de imagem enviado.' });
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ message: 'Nenhum ficheiro de mídia enviado.' });
         }
 
-        const mediaUrl = req.file.path.replace('http://', 'https://');
+        const mediaFiles = req.files.map(file => {
+            return {
+                url: file.path.replace('http://', 'https://'),
+                mediaType: file.mimetype.startsWith('video') ? 'video' : 'image'
+            };
+        });
 
         const post = new Post({
             caption,
-            mediaUrl,
-            mediaType: 'image',
+            media: mediaFiles,
             user: req.user.id
         });
 
@@ -34,6 +38,25 @@ exports.createPost = async (req, res) => {
         console.error('ERRO AO CRIAR POST:', error);
         res.status(500).json({ message: 'Erro interno do servidor ao criar o post.' });
     }
+};
+
+const standardizePostMedia = (posts) => {
+    return posts.map(post => {
+        // Se o post for um objeto simples (do lean()), convertemos para um objeto Mongoose
+        const postObj = post.toObject ? post.toObject() : post;
+
+        // Se não tiver o campo 'media' mas tiver o antigo 'mediaUrl'
+        if ((!postObj.media || postObj.media.length === 0) && postObj.mediaUrl) {
+            return {
+                ...postObj,
+                media: [{
+                    url: postObj.mediaUrl,
+                    mediaType: 'image' // Assumimos que todos os posts antigos são imagens
+                }]
+            };
+        }
+        return postObj;
+    });
 };
 
 // @desc    Obter o feed de postagens que o usuário segue (PAGINADO)
@@ -49,48 +72,32 @@ exports.getFeedPosts = async (req, res) => {
             return res.status(404).json({ message: 'Usuário não encontrado.' });
         }
 
-        // Garante que todos os IDs sejam strings antes de mapear
         const userIds = [...currentUser.following.map(id => id.toString()), req.user.id];
-
         const totalPosts = await Post.countDocuments({ user: { $in: userIds } });
 
-        // --- INÍCIO DA LÓGICA CORRIGIDA ---
-
-        // 1. Usamos aggregate para adicionar o campo com a contagem total de comentários
-        let posts = await Post.aggregate([
-            // O $match agora usa a conversão correta para ObjectId
-            { $match: { user: { $in: userIds.map(id => new mongoose.Types.ObjectId(id)) } } },
-            { $sort: { createdAt: -1 } },
-            { $skip: skip },
-            { $limit: limit },
-            {
-                $addFields: {
-                    commentsCount: { $size: '$comments' }
-                }
-            }
-        ]);
-
-        // 2. Populamos os dados necessários após a agregação
-        posts = await Post.populate(posts, [
-            { 
-                path: 'user', 
-                select: 'username avatar profession' 
-            },
-            {
+        let posts = await Post.find({ user: { $in: userIds } })
+            .populate('user', 'username avatar profession')
+            .populate({
                 path: 'comments',
                 perDocumentLimit: 2,
                 options: { sort: { createdAt: -1 } },
-                populate: {
-                    path: 'author',
-                    select: 'username avatar'
-                }
-            }
-        ]);
-        
-        // --- FIM DA LÓGICA CORRIGIDA ---
+                populate: { path: 'author', select: 'username avatar' }
+            })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        // --- CORREÇÃO APLICADA ---
+        let standardizedPosts = standardizePostMedia(posts);
+
+        standardizedPosts = standardizedPosts.map(post => ({
+            ...post,
+            isSaved: currentUser.savedPosts.includes(post._id),
+            commentsCount: post.comments?.length || 0 // Adiciona contagem para consistência
+        }));
 
         res.json({
-            posts,
+            posts: standardizedPosts,
             currentPage: page,
             totalPages: Math.ceil(totalPosts / limit),
             totalPosts,
@@ -157,8 +164,23 @@ exports.getPostById = async (req, res) => {
         if (!post) {
             return res.status(404).json({ message: 'Post não encontrado' });
         }
+        
+        // --- CORREÇÃO ---
+        let isSaved = false;
+        if (req.user) {
+            const loggedInUser = await User.findById(req.user.id);
+            if (loggedInUser && loggedInUser.savedPosts) {
+                isSaved = loggedInUser.savedPosts.includes(post._id);
+            }
+        }
+        // --- FIM DA CORREÇÃO ---
 
-        res.json(post);
+        const postWithSavedStatus = {
+            ...post.toObject(),
+            isSaved
+        };
+
+        res.json(postWithSavedStatus);
 
     } catch (error) {
         console.error("Erro ao buscar post por ID:", error);
@@ -262,8 +284,16 @@ exports.getExploreFeed = async (req, res) => {
             .limit(limit)
             .lean();
 
+        let standardizedPosts = standardizePostMedia(posts);
+
+        const postsWithSavedStatus = standardizedPosts.map(post => ({
+            ...post,
+            isSaved: loggedInUser.savedPosts.includes(post._id),
+            commentsCount: post.comments?.length || 0 
+        }));
+
         res.json({
-            posts,
+            posts: postsWithSavedStatus,
             currentPage: page,
             totalPages: Math.ceil(totalPosts / limit),
             totalPosts,

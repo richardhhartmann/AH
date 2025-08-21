@@ -7,11 +7,11 @@ import { useDispatch } from 'react-redux';
 import { fetchChats } from '../features/chat/chatSlice';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import useMediaQuery from '../hooks/useMediaQuery';
 import { usePostActions } from '../hooks/usePostActions';
 import { API_URL } from '../api/axios';
-import { CommentIcon, HeartIcon, LikedIcon, LikedIconPreview } from './Icons';
+import { CommentIcon, HeartIcon, LikedIcon, LikedIconPreview, SaveIcon, SavedIcon } from './Icons';
 import { PiChats } from "react-icons/pi";
 import * as S from './Post.styles';
 import api from '../api/axios'; // <-- 1. IMPORTAR A INSTÂNCIA DO AXIOS
@@ -37,12 +37,17 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
         handleLike: originalHandleLike,
         handleDelete, 
         isMyPost, 
-        isLikedByMe 
+        isLikedByMe,
+        handleSave,
+        isSavedByMe
     } = usePostActions(initialPost);
     
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const isMobile = useMediaQuery('(max-width: 768px)');
+
+    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+    const [aspectRatio, setAspectRatio] = useState(null); // Novo estado para a proporção
     
     const [isExpanded, setIsExpanded] = useState(false);
     const [showReadMore, setShowReadMore] = useState(false);
@@ -122,6 +127,28 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
     const commentsForPreview = post.comments?.filter(comment => comment && comment.author && comment.author.username) || [];
     const totalComments = post.commentsCount ?? post.comments?.length ?? 0;
 
+    const nextMedia = (e) => {
+        e.stopPropagation(); // Impede que o duplo clique para curtir seja acionado
+        setCurrentMediaIndex(prev => (prev + 1) % post.media.length);
+    };
+
+    const prevMedia = (e) => {
+        e.stopPropagation();
+        setCurrentMediaIndex(prev => (prev - 1 + post.media.length) % post.media.length);
+    };
+
+    const handleMediaLoad = ({ target }) => {
+        if (target.naturalWidth && target.naturalHeight) {
+            setAspectRatio(target.naturalHeight / target.naturalWidth);
+        } else if (target.videoWidth && target.videoHeight) {
+            setAspectRatio(target.videoHeight / target.videoWidth);
+        }
+    };
+
+    if (!post || !post.user || !post.media || post.media.length === 0) return null;
+    
+    const currentMedia = post.media[currentMediaIndex];
+
     return (
         <S.PostContainer ref={ref}>
             <S.PostHeader>
@@ -169,14 +196,52 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
                 )}
             </S.CaptionContainer>
             
-            <S.PostImageContainer onDoubleClick={handleLike}>
-                 <S.PostImage
-                    src={getImageUrl(post.mediaUrl)}
-                    alt={post.caption}
-                />
+            <S.PostImageContainer 
+                onDoubleClick={handleLike}
+                // Passa a proporção para o styled-component
+                aspectRatio={aspectRatio}
+            >
+                 {post.media.map((mediaItem, index) => (
+                    // O elemento de mídia agora está sempre visível ou não, em vez de ser trocado
+                    <div key={index} style={{ display: index === currentMediaIndex ? 'block' : 'none', width: '100%', height: '100%' }}>
+                        {mediaItem.mediaType === 'image' ? (
+                            <S.PostImage
+                                src={getImageUrl(mediaItem.url)}
+                                alt={post.caption}
+                                // O onLoad só é necessário para a primeira imagem para definir a proporção
+                                onLoad={index === 0 ? handleMediaLoad : null}
+                            />
+                        ) : (
+                            <S.PostVideo
+                                src={getImageUrl(mediaItem.url)}
+                                controls
+                                autoPlay={index === currentMediaIndex}
+                                muted
+                                loop
+                                // O onLoadedMetadata funciona como o onLoad para vídeos
+                                onLoadedMetadata={index === 0 ? handleMediaLoad : null}
+                            />
+                        )}
+                    </div>
+                 ))}
                 <S.LikeAnimationIcon className={showAnimation ? 'animate' : ''}>
                     <LikedIconPreview />
                 </S.LikeAnimationIcon>
+
+                {post.media.length > 1 && (
+                    <>
+                        <S.CarouselButton left onClick={prevMedia}><FaChevronLeft /></S.CarouselButton>
+                        <S.CarouselButton right onClick={nextMedia}><FaChevronRight /></S.CarouselButton>
+                        
+                        {/* --- INÍCIO DA ALTERAÇÃO --- */}
+                        <S.CarouselDots>
+                            {post.media.map((_, index) => (
+                                <S.Dot key={index} active={index === currentMediaIndex} />
+                            ))}
+                        </S.CarouselDots>
+                        {/* --- FIM DA ALTERAÇÃO --- */}
+                    </>
+                )}
             </S.PostImageContainer>
 
             <S.PostActions>
@@ -196,6 +261,12 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
                     {totalComments > 0 && (
                          <S.CounterBadge>{totalComments}</S.CounterBadge>
                     )}
+                </S.ActionButtonContainer>
+
+                <S.ActionButtonContainer style={{ marginLeft: 'auto' }}>
+                    <button onClick={handleSave} aria-label={isSavedByMe ? "Remover" : "Salvar"}>
+                        {isSavedByMe ? <SavedIcon /> : <SaveIcon />}
+                    </button>
                 </S.ActionButtonContainer>
             </S.PostActions>
             

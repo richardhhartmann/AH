@@ -109,21 +109,21 @@ const SearchWrapper = styled.div`
 `;
 
 const TopMobileHeader = styled.div`
-    display: none;
-    @media (max-width: 768px) {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0 20px;
-        height: 60px;
-        background-color: rgb(255, 240, 233);
-        border-bottom: 1px solid #dbdbdb;
-        position: fixed; /* ALTERADO */
-        top: 0;
+    display: none;
+    @media (max-width: 768px) {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 20px;
+        height: 60px;
+        background-color: rgb(255, 240, 233);
+        border-bottom: 1px solid #dbdbdb;
+        position: fixed; /* ALTERADO */
+        top: 0;
         left: 0;         /* ADICIONADO */
         width: 100%;     /* ADICIONADO */
-        z-index: 999;
-    }
+        z-index: 999;
+    }
 `;
 
 const MobileHeaderActions = styled.div`
@@ -267,6 +267,80 @@ const useOnClickOutside = (ref, handler) => {
         };
     }, [ref, handler]);
 };
+
+const SearchComponent = ({
+  query,
+  setQuery,
+  isFocused,
+  setIsFocused,
+  results,
+  recentSearches,
+  handleResultClick,
+  clearRecentSearches,
+}) => (
+  <div style={{ width: '100%', position: 'relative' }}>
+    <SearchInput
+      type="text"
+      placeholder="Buscar..."
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+      onFocus={() => setIsFocused(true)}
+      // O onBlur com setTimeout ajuda a garantir que o clique no resultado funcione antes do dropdown fechar
+      onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+    />
+
+    {/* Apenas um dropdown é renderizado, e seu conteúdo muda conforme a lógica abaixo */}
+    {isFocused && (
+      <SearchResultsDropdown>
+        {/* Lógica unificada: */}
+        {results.length > 0 && query.trim() !== '' ? (
+          // 1. Se houver resultados de busca, mostre-os.
+          results.map((user) => (
+            <SearchResultItem
+              key={user._id}
+              // Usamos onMouseDown para registrar o clique antes do onBlur do input
+              onMouseDown={() => handleResultClick(user)}
+            >
+              <img
+                src={
+                  user.avatar.startsWith('http')
+                    ? user.avatar
+                    : `${API_URL}${user.avatar}`
+                }
+                alt={user.username}
+              />
+              <span>{user.username}</span>
+            </SearchResultItem>
+          ))
+        ) : query.length === 0 && recentSearches.length > 0 ? (
+          // 2. Senão, se o campo estiver vazio e houver buscas recentes, mostre as buscas recentes.
+          <>
+            <RecentSearchHeader>
+              <span>Recente</span>
+              <button onClick={clearRecentSearches}>Limpar tudo</button>
+            </RecentSearchHeader>
+            {recentSearches.map((user) => (
+              <SearchResultItem
+                key={user._id}
+                onMouseDown={() => handleResultClick(user)}
+              >
+                <img
+                  src={
+                    user.avatar.startsWith('http')
+                      ? user.avatar
+                      : `${API_URL}${user.avatar}`
+                  }
+                  alt={user.username}
+                />
+                <span>{user.username}</span>
+              </SearchResultItem>
+            ))}
+          </>
+        ) : null /* 3. Caso contrário (buscando ou sem resultados), não mostre nada. */}
+      </SearchResultsDropdown>
+    )}
+  </div>
+);
 
 // --- Componente Principal ---
 const Navbar = () => {
@@ -418,85 +492,30 @@ const Navbar = () => {
         }
     };
 
-    const SearchComponent = () => (
-        <div style={{ width: '100%', position: 'relative' }}>
-          <SearchInput
-            type="text"
-            placeholder="Buscar..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            // O onBlur com setTimeout ajuda a garantir que o clique no resultado funcione antes do dropdown fechar
-            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-          />
-    
-          {/* Apenas um dropdown é renderizado, e seu conteúdo muda conforme a lógica abaixo */}
-          {isFocused && (
-            <SearchResultsDropdown>
-              {/* Lógica unificada: */}
-              {results.length > 0 && query.trim() !== '' ? (
-                // 1. Se houver resultados de busca, mostre-os.
-                results.map((user) => (
-                  <SearchResultItem
-                    key={user._id}
-                    // Usamos onMouseDown para registrar o clique antes do onBlur do input
-                    onMouseDown={() => handleResultClick(user)}
-                  >
-                    <img
-                      src={
-                        user.avatar.startsWith('http')
-                          ? user.avatar
-                          : `${API_URL}${user.avatar}`
-                      }
-                      alt={user.username}
-                    />
-                    <span>{user.username}</span>
-                  </SearchResultItem>
-                ))
-              ) : query.length === 0 && recentSearches.length > 0 ? (
-                // 2. Senão, se o campo estiver vazio e houver buscas recentes, mostre as buscas recentes.
-                <>
-                  <RecentSearchHeader>
-                    <span>Recente</span>
-                    <button onClick={clearRecentSearches}>Limpar tudo</button>
-                  </RecentSearchHeader>
-                  {recentSearches.map((user) => (
-                    <SearchResultItem
-                      key={user._id}
-                      onMouseDown={() => handleResultClick(user)}
-                    >
-                      <img
-                        src={
-                          user.avatar.startsWith('http')
-                            ? user.avatar
-                            : `${API_URL}${user.avatar}`
-                        }
-                        alt={user.username}
-                      />
-                      <span>{user.username}</span>
-                    </SearchResultItem>
-                  ))}
-                </>
-              ) : null /* 3. Caso contrário (buscando ou sem resultados), não mostre nada. */}
-            </SearchResultsDropdown>
-          )}
-        </div>
-      );
-
     if (!loggedInUser || (isProfilePage && isMobile)) {
         return null;
     }
 
     const NavContent = isDesktop ? (
         <DesktopHeader>
-             <NavContainer>
-                    <Logo to="/">
-                        <img src={logoImage} alt="Aesthete Logo" />
-                    </Logo>
-                    
-                    <SearchWrapper>
-                        <SearchComponent />
-                    </SearchWrapper>
+            <NavContainer>
+                <Logo to="/">
+                    <img src={logoImage} alt="Aesthete Logo" />
+                </Logo>
+                
+                <SearchWrapper>
+                  {/* Passe todas as variáveis e funções necessárias como props */}
+                  <SearchComponent 
+                      query={query}
+                      setQuery={setQuery}
+                      isFocused={isFocused}
+                      setIsFocused={setIsFocused}
+                      results={results}
+                      recentSearches={recentSearches}
+                      handleResultClick={handleResultClick}
+                      clearRecentSearches={clearRecentSearches}
+                  />
+              </SearchWrapper>
 
                     <NavLinks>
                         <Link to="/" title="Feed">

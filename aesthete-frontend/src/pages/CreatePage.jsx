@@ -5,9 +5,9 @@ import useMediaQuery from '../hooks/useMediaQuery';
 import { IoImageOutline } from "react-icons/io5";
 import { IoIosArrowBack } from "react-icons/io";
 import { GoPencil } from "react-icons/go";
-import api from '../api/axios'; // Importar a instância do axios
+import api from '../api/axios';
 
-// --- Styled Components ---
+// --- Styled Components (O TEU CÓDIGO ORIGINAL - SEM ALTERAÇÕES) ---
 
 const slideUp = keyframes`
   from { transform: translateY(100%); }
@@ -43,7 +43,7 @@ const ModalHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative; // Necessário para o botão de voltar
+  position: relative;
   text-align: center;
   font-weight: bold;
   font-size: 1.3rem;
@@ -65,7 +65,6 @@ const ChoiceButton = styled(Link)`
   &:hover { background-color: #fafafa; }
 `;
 
-// --- Styled Components para o Modal de Postagem ---
 const PostForm = styled.form`
   height: 80vh;
   width: 100%;
@@ -77,7 +76,7 @@ const PostForm = styled.form`
   animation: ${slideUp} 0.3s ease-out;
   display: flex;
   flex-direction: column;
-  gap: 12px; /* ALTERAÇÃO 1: Espaçamento geral diminuído */
+  gap: 12px;
 `;
 
 const MediaContainer = styled.div`
@@ -87,6 +86,7 @@ const MediaContainer = styled.div`
   justify-content: center;
   flex-grow: 1;
   min-height: 200px;
+  overflow: hidden; // Adicionado para conter os previews
 `;
 
 const BackButton = styled.button`
@@ -102,12 +102,10 @@ const BackButton = styled.button`
   cursor: pointer;
   padding: 0;
   font-size: 1.5rem;
-
-  position: absolute;   /* fixar no header */
-  left: 0;              /* grudar na esquerda */
-  top: 50%;             /* centralizar verticalmente */
+  position: absolute;
+  left: 0;
+  top: 50%;
   transform: translateY(-75%);
-
   &:hover {
     opacity: 0.9;
   }
@@ -115,9 +113,8 @@ const BackButton = styled.button`
 
 const IconContainer = styled.div`
   color: rgb(254, 121, 13);
-  margin-bottom: 10px; /* ALTERAÇÃO 1: Removida margem superior */
+  margin-bottom: 10px;
   text-align: center;
-
   svg {
     width: 80px;
     height: 80px;
@@ -128,31 +125,69 @@ const InfoText = styled.p`
   text-align: center;
   color: #8e8e8e;
   margin-bottom: 20px;
-  max-width: 350px;   /* largura máxima do texto */
-  margin-left: auto;  /* centraliza horizontalmente */
-  margin-right: auto; /* idem */
-  word-wrap: break-word; /* garante quebra em palavras longas */
+  max-width: 350px;
+  margin-left: auto;
+  margin-right: auto;
+  word-wrap: break-word;
 `;
 
-// NOVO: Preview da Imagem
-const ImagePreview = styled.img`
-  max-width: 100%;
-  max-height: 300px;
-  border-radius: 8px;
-  object-fit: cover;
+// --- INÍCIO DAS MODIFICAÇÕES DE ESTILO PARA MÚLTIPLAS MÍDIAS ---
+const PreviewGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-height: 250px; // Altura máxima para a grelha
+  overflow-y: auto; // Scroll se houver muitas mídias
   margin-bottom: 16px;
 `;
 
+const PreviewItem = styled.div`
+  position: relative;
+  width: 100%;
+  padding-bottom: 100%; /* Força o aspect ratio 1:1 */
+
+  img, video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+`;
+
+const RemoveButton = styled.button`
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 20px;
+  text-align: center;
+  padding: 0;
+  z-index: 2;
+`;
+// --- FIM DAS MODIFICAÇÕES DE ESTILO ---
+
+
 const GalleryButton = styled.button`
-  padding: 12px 128px; /* ALTERAÇÃO 2: Padding horizontal para ajustar largura */
+  padding: 12px 128px;
   background-color: rgb(254, 121, 13);
   color: white;
   border: none;
   border-radius: 32px;
   cursor: pointer;
-  width: auto; /* ALTERAÇÃO 2: Largura automática */
+  width: auto;
   font-size: 1rem;
-  font-weight: normal; /* ALTERAÇÃO 3: Peso da fonte normal */
+  font-weight: normal;
 `;
 
 const DescriptionWrapper = styled.div`
@@ -164,7 +199,7 @@ const StyledTextarea = styled.textarea`
   width: 100%;
   height: 100px;
   padding: 10px;
-  padding-left: 34px; /* ALTERAÇÃO 4: Espaço à esquerda para o ícone */
+  padding-left: 34px;
   border: 1px solid #dbdbdb;
   border-radius: 8px;
   resize: none;
@@ -175,7 +210,7 @@ const Icon = styled(GoPencil)`
   position: absolute;
   top: 12px;
   left: 10px;
-  color: rgb(254, 121, 13); /* ALTERAÇÃO 4: Cor do ícone alterada */
+  color: rgb(254, 121, 13);
   pointer-events: none;
 `;
 
@@ -189,8 +224,8 @@ const CharCounter = styled.span`
 
 const PublishButton = styled(GalleryButton)`
   margin-top: auto;
-  width: 100%; /* Botão de publicar mantém largura total */
-  padding: 12px; /* Padding original restaurado para este botão */
+  width: 100%;
+  padding: 12px;
 
   &:disabled {
     background-color: rgb(255, 172, 104, 1);
@@ -227,10 +262,11 @@ const CreatePage = () => {
     const isMobile = useMediaQuery('(max-width: 768px)');
     const navigate = useNavigate();
 
+    // --- INÍCIO DAS ALTERAÇÕES LÓGICAS ---
     const [view, setView] = useState('selection');
     const [caption, setCaption] = useState('');
-    const [file, setFile] = useState(null);
-    const [preview, setPreview] = useState('');
+    const [files, setFiles] = useState([]); // Alterado para array
+    const [previews, setPreviews] = useState([]); // Alterado para array
     const [isLoading, setIsLoading] = useState(false);
     
     const fileInputRef = useRef(null);
@@ -239,36 +275,58 @@ const CreatePage = () => {
     const handleOpenGallery = () => fileInputRef.current.click();
     
     const handleFileChange = (e) => {
-      const selectedFile = e.target.files[0];
-      if (selectedFile) {
-        setFile(selectedFile);
-        setPreview(URL.createObjectURL(selectedFile));
+      const selectedFiles = Array.from(e.target.files);
+      
+      if (files.length + selectedFiles.length > 10) {
+        alert('Podes selecionar no máximo 10 mídias.');
+        return;
       }
+
+      setFiles(prevFiles => [...prevFiles, ...selectedFiles]);
+
+      const newPreviews = selectedFiles.map(file => ({
+        url: URL.createObjectURL(file),
+        type: file.type
+      }));
+      setPreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
+    };
+
+    const handleRemoveMedia = (indexToRemove) => {
+        setFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
+        setPreviews(prevPreviews => {
+            // Revoga o URL do objeto para libertar memória
+            URL.revokeObjectURL(prevPreviews[indexToRemove].url);
+            return prevPreviews.filter((_, index) => index !== indexToRemove);
+        });
     };
 
     const handlePublish = async (e) => {
         e.preventDefault();
-        if (!file || !caption.trim()) {
-            alert('É necessário selecionar uma imagem e adicionar uma descrição.');
+        if (files.length === 0 || !caption.trim()) {
+            alert('É necessário selecionar pelo menos uma mídia e adicionar uma descrição.');
             return;
         }
         setIsLoading(true);
 
         const formData = new FormData();
-        formData.append('media', file);
         formData.append('caption', caption);
+        files.forEach(file => {
+            formData.append('media', file);
+        });
 
         try {
             await api.post('/posts', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
-            navigate('/'); // Redireciona para o feed após sucesso
+            navigate('/');
         } catch (error) {
             console.error('Erro ao criar o post', error.response?.data || error.message);
             alert('Falha ao criar o post.');
+        } finally {
             setIsLoading(false);
         }
     };
+    // --- FIM DAS ALTERAÇÕES LÓGICAS ---
 
     if (!isMobile) {
         return (
@@ -300,13 +358,22 @@ const CreatePage = () => {
                     </ModalHeader>
                     
                     <MediaContainer>
-                        {preview ? (
-                            <ImagePreview src={preview} alt="Pré-visualização" />
+                        {previews.length > 0 ? (
+                            <PreviewGrid>
+                                {previews.map((preview, index) => (
+                                    <PreviewItem key={index}>
+                                        <RemoveButton type="button" onClick={() => handleRemoveMedia(index)}>x</RemoveButton>
+                                        {preview.type.startsWith('image/') ? (
+                                            <img src={preview.url} alt={`Pré-visualização ${index + 1}`} />
+                                        ) : (
+                                            <video src={preview.url} muted />
+                                        )}
+                                    </PreviewItem>
+                                ))}
+                            </PreviewGrid>
                         ) : (
                             <>
-                                <IconContainer>
-                                    <IoImageOutline />
-                                </IconContainer>
+                                <IconContainer><IoImageOutline /></IconContainer>
                                 <InfoText>
                                     Clique no botão abaixo para acessar sua galeria e selecionar as fotos ou vídeos
                                 </InfoText>
@@ -319,9 +386,10 @@ const CreatePage = () => {
                           style={{ display: 'none' }} 
                           onChange={handleFileChange}
                           accept="image/*,video/*"
+                          multiple // Permite múltiplos ficheiros
                         />
                         <GalleryButton type="button" onClick={handleOpenGallery}>
-                            {preview ? 'Escolher outro' : 'Abrir galeria'}
+                            {previews.length > 0 ? 'Adicionar mais' : 'Abrir galeria'}
                         </GalleryButton>
                     </MediaContainer>
                     
@@ -336,7 +404,7 @@ const CreatePage = () => {
                         <CharCounter>{caption.length}/140</CharCounter>
                     </DescriptionWrapper>
                     
-                    <PublishButton type="submit" disabled={!file || !caption.trim() || isLoading}>
+                    <PublishButton type="submit" disabled={files.length === 0 || !caption.trim() || isLoading}>
                         {isLoading ? 'Publicando...' : 'Criar Post'}
                     </PublishButton>
                 </PostForm>

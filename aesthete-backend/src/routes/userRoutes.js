@@ -13,7 +13,9 @@ const {
     getFollowers,
     getFollowing,
     getUserSuggestions,
-    getTopPosters
+    getTopPosters,
+    savePost,
+    getSavedPosts
 } = require('../controllers/userController');
 
 
@@ -30,5 +32,7 @@ router.put('/follow/:id', protect, followUser);
 router.get('/:id/followers', protect, getFollowers);
 router.get('/:id/following', protect, getFollowing);
 router.get('/top-posters', protect, getTopPosters);
+router.put('/save-post/:postId', protect, savePost);
+router.get('/saved-posts', protect, getSavedPosts);
 
 module.exports = router;

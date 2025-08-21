@@ -23,7 +23,7 @@ router.get('/feed', protect, getFeedPosts);
 router.get('/explore', protect, getExploreFeed); // <-- ADICIONA A NOVA ROTA
 
 // Rota para criar um novo post
-router.post('/', protect, upload.single('media'), createPost);
+router.post('/', protect, upload.array('media', 10), createPost);
 
 // Rota para buscar ou deletar um post específico
 router.route('/:id')

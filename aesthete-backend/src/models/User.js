@@ -10,6 +10,7 @@ const UserSchema = new mongoose.Schema({
     bio: { type: String, maxlength: 150, default: '' },
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
     resetPasswordToken: String,
     resetPasswordExpire: Date,
     profession: {
