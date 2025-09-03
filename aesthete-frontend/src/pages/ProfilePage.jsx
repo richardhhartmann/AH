@@ -5,6 +5,7 @@ import { useStoryStatus } from '../context/StoryContext';
 import { FaHeart, FaComment, FaBookmark } from 'react-icons/fa';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+import { addOrUpdateChat } from '../features/chat/chatSlice'; // <-- 1. IMPORTAR A NOVA ACTION
 import { fetchChats } from '../features/chat/chatSlice';
 import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
@@ -493,6 +494,7 @@ const PostThumbnailContainer = styled.div`
   width: 100%;
   padding-bottom: 100%;
   cursor: pointer;
+  background-color: #fff;
 
   &:hover ${PostOverlay} {
     opacity: 1;
@@ -668,12 +670,19 @@ const ProfilePage = () => {
 
     const handleStartChat = async () => {
         if (!profileData) return;
+        console.log('--- [PROFILE PAGE] handleStartChat ---');
+        console.log(`Iniciando chat com userId: ${profileData.user._id}`);
         try {
-            const { data } = await api.post('/chats', { userId: profileData.user._id });
-            dispatch(fetchChats()); 
-            navigate(`/chat/${data._id}`);
+            const { data: chat } = await api.post('/chats', { userId: profileData.user._id });
+            console.log('Resposta da API recebida:', JSON.stringify(chat, null, 2));
+            
+            console.log('Disparando a ação addOrUpdateChat...');
+            dispatch(addOrUpdateChat(chat)); 
+            
+            console.log(`Navegando para /chat/${chat._id}`);
+            navigate(`/chat/${chat._id}`);
         } catch (error) {
-            console.error("Erro ao iniciar chat", error);
+            console.error("❌ Erro ao iniciar chat", error);
         }
     };
     

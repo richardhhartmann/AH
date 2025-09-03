@@ -8,7 +8,6 @@ const initialState = {
     error: null,
 };
 
-// Thunk para buscar as conversas
 export const fetchChats = createAsyncThunk('chat/fetchChats', async () => {
     const response = await api.get('/chats');
     return response.data;
@@ -18,11 +17,20 @@ export const chatSlice = createSlice({
     name: 'chat',
     initialState,
     reducers: {
+        addOrUpdateChat: (state, action) => {
+            const newChat = action.payload;
+            const existingChat = state.chats.find(chat => chat._id === newChat._id);
+
+            // Se o chat não existe na lista, adiciona-o ao início.
+            if (!existingChat) {
+                state.chats.unshift(newChat);
+            }
+        },
         removeChatFromState: (state, action) => {
             const chatIdToRemove = action.payload;
             state.chats = state.chats.filter(chat => chat._id !== chatIdToRemove);
-            },
-
+            state.totalUnreadCount = state.chats.filter(chat => chat.unreadCount > 0).length;
+        },
         updateChatStateFromSocket: (state, action) => {
             const { newMessage, loggedInUserId } = action.payload;
             let chatExists = false;
@@ -37,13 +45,20 @@ export const chatSlice = createSlice({
             });
             
             if (chatExists) {
+                // Se o chat já existe, move-o para o topo da lista
                 const chatToMove = updatedChats.find(chat => chat._id === newMessage.chat._id);
                 const otherChats = updatedChats.filter(chat => chat._id !== newMessage.chat._id);
                 state.chats = [chatToMove, ...otherChats];
+            } else {
+                 // Se o chat é completamente novo (vindo de outro utilizador), adiciona-o
+                 const newChatFromServer = {
+                    ...newMessage.chat,
+                    lastMessage: newMessage,
+                    unreadCount: 1,
+                 }
+                 state.chats.unshift(newChatFromServer);
             }
 
-            // --- LÓGICA CORRIGIDA ---
-            // Contamos quantos chats têm unreadCount > 0
             state.totalUnreadCount = state.chats.filter(chat => chat.unreadCount > 0).length;
         },
         markChatAsReadInState: (state, action) => {
@@ -54,9 +69,6 @@ export const chatSlice = createSlice({
                 }
                 return chat;
             });
-
-            // --- LÓGICA CORRIGIDA ---
-            // Recalculamos quantos chats têm unreadCount > 0
             state.totalUnreadCount = state.chats.filter(chat => chat.unreadCount > 0).length;
         }
     },
@@ -68,9 +80,6 @@ export const chatSlice = createSlice({
             .addCase(fetchChats.fulfilled, (state, action) => {
                 state.status = 'succeeded';
                 state.chats = action.payload;
-                
-                // --- LÓGICA CORRIGIDA ---
-                // Contamos quantos chats têm unreadCount > 0
                 state.totalUnreadCount = action.payload.filter(chat => chat.unreadCount > 0).length;
             })
             .addCase(fetchChats.rejected, (state, action) => {
@@ -80,6 +89,6 @@ export const chatSlice = createSlice({
     },
 });
 
-export const { updateChatStateFromSocket, markChatAsReadInState, removeChatFromState } = chatSlice.actions;
+export const { addOrUpdateChat, updateChatStateFromSocket, markChatAsReadInState, removeChatFromState } = chatSlice.actions;
 
 export default chatSlice.reducer;

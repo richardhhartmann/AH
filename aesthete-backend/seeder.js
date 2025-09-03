@@ -1,20 +1,20 @@
 const path = require('path');
-const fs = require('fs'); 
+const fs = require('fs');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const connectDB = require('./src/config/db');
 const User = require('./src/models/User');
 const Post = require('./src/models/Post');
-const Ad = require('./src/models/Ad'); 
+const Ad = require('./src/models/Ad');
 const Chat = require('./src/models/Chat');
 const Message = require('./src/models/Message');
 const Story = require('./src/models/Story');
 const Comment = require('./src/models/Comment');
 
+dotenv.config();
+
 const logoPath = path.join(__dirname, 'uploads', 'avatars', 'logo.png');
-
 const localLogoApiRoute = '/uploads/avatars/logo.png';
-
 const fallbackLogoUrl = 'https://i.imgur.com/iliidAM.jpeg';
 
 let logoImage;
@@ -26,9 +26,28 @@ if (fs.existsSync(logoPath)) {
   console.log('⚠️ Logo local não encontrado. Usando URL de fallback.');
 }
 
-dotenv.config();
-
-connectDB();
+// --- FUNÇÃO PARA TRUNCAR IMAGENS EM FORMATO QUADRADO ---
+const cropImageUrl = (url, size = 1080) => {
+    if (!url || typeof url !== 'string' || (!url.startsWith('https://images.pexels.com') && !url.startsWith('https://images.unsplash.com'))) {
+        return url;
+    }
+    try {
+        const urlObj = new URL(url);
+        urlObj.searchParams.delete('w');
+        urlObj.searchParams.delete('h');
+        urlObj.searchParams.delete('fit');
+        urlObj.searchParams.delete('crop');
+        urlObj.searchParams.set('w', size);
+        urlObj.searchParams.set('h', size);
+        urlObj.searchParams.set('fit', 'crop');
+        if (url.includes('unsplash')) {
+            urlObj.searchParams.set('crop', 'faces,entropy');
+        }
+        return urlObj.toString();
+    } catch (error) {
+        return url;
+    }
+};
 
 const usersData = [
     {
@@ -36,7 +55,7 @@ const usersData = [
         email: 'jacque.tenorio@example.com',
         password: 'password123',
         profession: 'Esteticista',
-        avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cHJvZmlsZSUyMHBob3RvfGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cHJvZmlsZSUyMHBob3RvfGVufDB8fDB8fHww'),
         bio: 'Apaixonada por cuidados com a pele e bem-estar. ✨ Transformando peles e vidas.',
     },
     {
@@ -44,7 +63,7 @@ const usersData = [
         email: 'ana.clara@example.com',
         password: 'password123',
         profession: 'Maquiador(a)',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8cHJvZmlsZSUyMHBob3RvfGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8cHJvZmlsZSUyMHBob3RvfGVufDB8fDB8fHww'),
         bio: 'Transformando rostos com a magia da maquiagem. 💄 Realçando a beleza que já existe.',
     },
     {
@@ -52,7 +71,7 @@ const usersData = [
         email: 'emmilly@example.com',
         password: 'password123',
         profession: 'Designer de Sobrancelhas',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8cHJvZmlsZSUyMHBob3RvfGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8cHJvZmlsZSUyMHBob3RvfGVufDB8fDB8fHww'),
         bio: 'Sobrancelhas perfeitas para um olhar marcante. A moldura da alma.',
     },
     {
@@ -60,7 +79,7 @@ const usersData = [
         email: 'nathalia.miotto@example.com',
         password: 'password123',
         profession: 'Dermatologista',
-        avatar: 'https://images.unsplash.com/photo-1521119989659-a83eee488004?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHByb2ZpbGUlMjBwaG90b3xlbnwwfHwwfHx8MA%3D%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1521119989659-a83eee488004?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHByb2ZpbGUlMjBwaG90b3xlbnwwfHwwfHx8MA%3D%3D'),
         bio: 'Cuidando da saúde da sua pele com ciência e carinho. #skincarescience',
     },
     {
@@ -68,7 +87,7 @@ const usersData = [
         email: 'henrique@example.com',
         password: 'password123',
         profession: 'Programador',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bWVufGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bWVufGVufDB8fDB8fHww'),
         bio: 'Desenvolvedor focado em criar soluções inovadoras. Transformando café em código.',
     },
     {
@@ -76,7 +95,7 @@ const usersData = [
         email: 'camila@example.com',
         password: 'password123',
         profession: 'Biomédico',
-        avatar: 'https://images.unsplash.com/photo-1557053910-d9eadeed1c58?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fHByb2ZpbGUlMjBwaG90b3xlbnwwfHwwfHx8MA%3D%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1557053910-d9eadeed1c58?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fHByb2ZpbGUlMjBwaG90b3xlbnwwfHwwfHx8MA%3D%3D'),
         bio: 'Pesquisa e inovação na área da saúde estética. Ciência a favor da beleza.',
     },
     {
@@ -84,7 +103,7 @@ const usersData = [
         email: 'felipe@example.com',
         password: 'password123',
         profession: 'Especialista em Posicionamento',
-        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cHJvZmlsZSUyMHBvcnRyYWl0fGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cHJvZmlsZSUyMHBvcnRyYWl0fGVufDB8fDB8fHww'),
         bio: 'Ajudando profissionais da estética a encontrarem seu lugar no digital. #marketingdeconteudo',
     },
     {
@@ -92,7 +111,7 @@ const usersData = [
         email: 'annaclara.brum@example.com',
         password: 'password123',
         profession: 'Fisioterapeuta Dermatofuncional',
-        avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8cHJvZmlsZSUyMHBob3RvfGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1580489944761-15a19d654956?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8cHJvZmlsZSUyMHBob3RvfGVufDB8fDB8fHww'),
         bio: 'Reabilitando a pele e o corpo com as melhores técnicas. Saúde e bem-estar integrados.',
     },
     {
@@ -109,7 +128,7 @@ const usersData = [
         email: 'lucas.santos@example.com',
         password: 'password123',
         profession: 'Especialista em Posicionamento',
-        avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8YnVzaW5lc3MlMjBtYW58ZW58MHx8MHx8fDA%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1560250097-0b93528c311a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8YnVzaW5lc3MlMjBtYW58ZW58MHx8MHx8fDA%3D'),
         bio: 'Capturando a essência da beleza em cada clique. A imagem como pilar do posicionamento digital.',
     },
     {
@@ -117,7 +136,7 @@ const usersData = [
         email: 'sofia.lima@example.com',
         password: 'password123',
         profession: 'Esteticista',
-        avatar: 'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8cGVyc29ufGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1552058544-f2b08422138a?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8cGVyc29ufGVufDB8fDB8fHww'),
         bio: 'A beleza começa de dentro para fora. Estética integrativa para uma pele radiante.',
     },
     {
@@ -125,7 +144,7 @@ const usersData = [
         email: 'pedro.almeida@example.com',
         password: 'password123',
         profession: 'Fisioterapeuta Dermatofuncional',
-        avatar: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDB8fHBlcnNvbnxlbnwwfHwwfHx8MA%3D%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDB8fHBlcnNvbnxlbnwwfHwwfHx8MA%3D%3D'),
         bio: 'Corpo em movimento, pele saudável. Ajudando você a atingir seus objetivos de bem-estar.',
     },
     {
@@ -133,7 +152,7 @@ const usersData = [
         email: 'isabela.costa@example.com',
         password: 'password123',
         profession: 'Micropigmentador(a)',
-        avatar: 'https://images.unsplash.com/photo-1619946794135-5bc917a27793?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fHdvbWFufGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1619946794135-5bc917a27793?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fHdvbWFufGVufDB8fDB8fHww'),
         bio: 'Arte em cada fio. Especialista em lábios e sobrancelhas. #pmu',
     },
     {
@@ -141,7 +160,7 @@ const usersData = [
         email: 'rafael.oliveira@example.com',
         password: 'password123',
         profession: 'Cabeleireiro(a)',
-        avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8bWFufGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8bWFufGVufDB8fDB8fHww'),
         bio: 'Estilo e precisão para o homem moderno. Mais que um corte, uma assinatura.',
     },
     {
@@ -149,7 +168,7 @@ const usersData = [
         email: 'gabriel.souza@example.com',
         password: 'password123',
         profession: 'Fisioterapeuta Dermatofuncional',
-        avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mzh8fHBlcnNvbnxlbnwwfHwwfHx8MA%3D%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mzh8fHBlcnNvbnxlbnwwfHwwfHx8MA%3D%3D'),
         bio: 'Alinhando seu corpo, melhorando sua pele. Bem-estar que irradia de dentro para fora.',
     },
     {
@@ -157,7 +176,7 @@ const usersData = [
         email: 'beatriz.rocha@example.com',
         password: 'password123',
         profession: 'Especialista em Posicionamento',
-        avatar: 'https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHdvbWFufGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHdvbWFufGVufDB8fDB8fHww'),
         bio: 'A imagem pessoal como ferramenta de sucesso. Vista-se de confiança e conquiste seu espaço.',
     },
     {
@@ -165,7 +184,7 @@ const usersData = [
         email: 'tiago.pereira@example.com',
         password: 'password123',
         profession: 'Especialista em Posicionamento',
-        avatar: 'https://images.unsplash.com/photo-1628157588553-5eeea00af15c?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDd8fHBlcnNvbnxlbnwwfHwwfHx8MA%3D%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1628157588553-5eeea00af15c?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDd8fHBlcnNvbnxlbnwwfHwwfHx8MA%3D%3D'),
         bio: 'Criando conexões e engajamento para marcas de beleza. #socialmediamarketing',
     },
     {
@@ -173,7 +192,7 @@ const usersData = [
         email: 'julia.gomes@example.com',
         password: 'password123',
         profession: 'Biomédico',
-        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fHdvbWFufGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fHdvbWFufGVufDB8fDB8fHww'),
         bio: 'A ciência biomédica aplicada à estética avançada. Procedimentos para a sua melhor versão.',
     },
     {
@@ -181,7 +200,7 @@ const usersData = [
         email: 'bruno.carvalho@example.com',
         password: 'password123',
         profession: 'Fisioterapeuta Dermatofuncional',
-        avatar: 'https://images.unsplash.com/photo-1557862921-37829c790f19?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjR8fG1hbnxlbnwwfHwwfHx8MA%3D%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1557862921-37829c790f19?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjR8fG1hbnxlbnwwfHwwfHx8MA%3D%3D'),
         bio: 'Aliviando tensões, restaurando energias. Toque terapêutico para corpo e mente.',
     },
     {
@@ -189,7 +208,7 @@ const usersData = [
         email: 'carolina.f@example.com',
         password: 'password123',
         profession: 'Biomédico',
-        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8ZGVudGlzdHxlbnwwfHwwfHx8MA%3D%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8ZGVudGlzdHxlbnwwfHwwfHx8MA%3D%3D'),
         bio: 'Criando sorrisos e faces harmônicas. A saúde e a estética orofacial em primeiro lugar!',
     },
     {
@@ -197,7 +216,7 @@ const usersData = [
         email: 'vanessa.melo@example.com',
         password: 'password123',
         profession: 'Esteticista',
-        avatar: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8aW5mbHVlbmNlcnxlbnwwfHwwfHx8MA%3D%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8aW5mbHVlbmNlcnxlbnwwfHwwfHx8MA%3D%3D'),
         bio: 'Esteticista e influencer. Compartilhando meu dia a dia e dicas de beleza com o mundo. #beautytips',
     },
     {
@@ -205,7 +224,7 @@ const usersData = [
         email: 'rodrigo.barros@example.com',
         password: 'password123',
         profession: 'Esteticista',
-        avatar: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dXNlcnxlbnwwfHwwfHx8MA%3D%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8dXNlcnxlbnwwfHwwfHx8MA%3D%3D'),
         bio: 'Esteticista e dono de uma rede de clínicas. Buscando sempre inovar no mercado da beleza.',
     },
     {
@@ -213,7 +232,7 @@ const usersData = [
         email: 'andre.silva@example.com',
         password: 'password123',
         profession: 'Especialista em Posicionamento',
-        avatar: 'https://images.unsplash.com/photo-1618641986557-1ecd230959aa?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fG1hbnxlbnwwfHwwfHx8MA%3D%3D',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1618641986557-1ecd230959aa?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fG1hbnxlbnwwfHwwfHx8MA%3D%3D'),
         bio: 'Estrategista de marca para profissionais da saúde e beleza. Construa uma marca de autoridade.',
     },
     {
@@ -221,7 +240,7 @@ const usersData = [
         email: 'marcelo.campos@example.com',
         password: 'password123',
         profession: 'Fisioterapeuta Dermatofuncional',
-        avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8ZG9jdG9yfGVufDB8fDB8fHww',
+        avatar: cropImageUrl('https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8ZG9jdG9yfGVufDB8fDB8fHww'),
         bio: 'Recuperação pós-operatória e tratamentos para celulite e flacidez. Cuidando da sua saúde estética.',
     },
 ];
@@ -231,10 +250,10 @@ const adsData = [
         companyName: 'Clínica BelleVie',
         headline: 'Agende sua harmonização facial conosco!',
         description: 'Resultados naturais que realçam a sua beleza. Use o código AH15 para 15% de desconto.',
-        mediaUrl: 'https://images.pexels.com/photos/3762873/pexels-photo-3762873.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+        mediaUrl: cropImageUrl('https://images.pexels.com/photos/3762873/pexels-photo-3762873.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'),
         callToAction: {
             text: 'Saiba Mais',
-            url: 'https://www.instagram.com', // Link de destino do anúncio
+            url: 'https://www.instagram.com',
         },
         status: 'active',
     },
@@ -242,7 +261,7 @@ const adsData = [
         companyName: 'Dermato Skincare',
         headline: 'O sérum de Vitamina C que vai revolucionar sua pele.',
         description: 'Fórmula exclusiva com antioxidantes potentes para uma pele mais iluminada e uniforme.',
-        mediaUrl: 'https://images.pexels.com/photos/4041391/pexels-photo-4041391.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+        mediaUrl: cropImageUrl('https://images.pexels.com/photos/4041391/pexels-photo-4041391.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'),
         callToAction: {
             text: 'Comprar Agora',
             url: 'https://www.instagram.com',
@@ -253,7 +272,7 @@ const adsData = [
         companyName: 'Estética Avançada Pro',
         headline: 'Curso de Microagulhamento para Profissionais',
         description: 'Aprenda a técnica que está transformando o mercado da estética e aumente seu faturamento.',
-        mediaUrl: 'https://images.pexels.com/photos/7176319/pexels-photo-7176319.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+        mediaUrl: cropImageUrl('https://images.pexels.com/photos/7176319/pexels-photo-7176319.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'),
         callToAction: {
             text: 'Inscreva-se',
             url: 'https://www.instagram.com',
@@ -268,6 +287,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const importData = async () => {
     try {
+        await connectDB();
         console.log('🚀 Iniciando o processo de seeding...');
 
         console.log('🧹 Limpando coleções...');
@@ -277,6 +297,7 @@ const importData = async () => {
         await Chat.deleteMany();
         await Message.deleteMany();
         await Story.deleteMany();
+        await Comment.deleteMany();
         console.log('✅ Coleções limpas.');
         await sleep(500);
 
@@ -325,35 +346,33 @@ const importData = async () => {
         await sleep(500);
 
         const postsData = [
-            // Post com Múltiplas Mídias (Exemplo)
             { 
                 user: userMap.jacquetenorio._id, 
                 caption: 'Um dia de spa completo! Primeiro a máscara, depois a hidratação. ✨ #skincare #autocuidado', 
                 media: [
-                    { url: 'https://images.pexels.com/photos/6621462/pexels-photo-6621462.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' },
-                    { url: 'https://images.pexels.com/photos/3783471/pexels-photo-3783471.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }
+                    { url: cropImageUrl('https://images.pexels.com/photos/6621462/pexels-photo-6621462.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' },
+                    { url: cropImageUrl('https://images.pexels.com/photos/3783471/pexels-photo-3783471.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }
                 ] 
             },
-            // Posts com Mídia Única
-            { user: userMap.anaclara._id, caption: 'Resultado da make de hoje! Um esfumado clássico que nunca erra. O que acharam? 💄 #makeup #makeuptutorial', media: [{ url: 'https://images.pexels.com/photos/3762662/pexels-photo-3762662.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.nathaliamiotto._id, caption: 'Não se esqueça do protetor solar, mesmo em dias nublados! A prevenção é o melhor tratamento. #dermatologia #sunscreen', media: [{ url: 'https://images.pexels.com/photos/3762870/pexels-photo-3762870.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.emmilly._id, caption: 'Design de sobrancelhas que realça o olhar. Agende seu horário!', media: [{ url: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.henrique._id, caption: 'Trabalhando em uma nova feature para o app. Alguma sugestão do que vocês gostariam de ver por aqui? 👨‍💻 #devlife #feedback', media: [{ url: 'https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.felipe._id, caption: '3 dicas de ouro para profissionais da beleza se destacarem no Instagram. A primeira é: constância! Quer saber as outras? #marketingdigital', media: [{ url: 'https://images.pexels.com/photos/6476587/pexels-photo-6476587.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.lucas_santos._id, caption: 'A foto de perfil é seu cartão de visitas. Invista em uma imagem que transmita seu profissionalismo. #fotografia #brandingpessoal', media: [{ url: 'https://images.pexels.com/photos/3771089/pexels-photo-3771089.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.sofia_lima._id, caption: 'Dica de hoje: suco verde para uma pele incrível! A beleza que vem de dentro reflete por fora. 🍍 #nutricao #pelesaudavel', media: [{ url: 'https://images.pexels.com/photos/1346347/pexels-photo-1346347.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.isabela_costa._id, caption: 'O poder da micropigmentação labial. Lábios corados e definidos por muito mais tempo. #pmu #microlabial', media: [{ url: 'https://images.pexels.com/photos/7879975/pexels-photo-7879975.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.beatriz_rocha._id, caption: 'Qual a sua mensagem? O posicionamento de marca pessoal pode transformar seu visual e carreira. #consultoriadeimagem', media: [{ url: 'https://images.pexels.com/photos/5708253/pexels-photo-5708253.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.vanessa_melo._id, caption: 'Recebidos do mês! 😍 Tantas novidades incríveis para testar com vocês. Qual produto querem ver resenha primeiro? #unboxing #beautytips', media: [{ url: 'https://images.pexels.com/photos/7262995/pexels-photo-7262995.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.rodrigo_barros._id, caption: 'Visitando nossa nova unidade. Muito orgulhoso do crescimento da nossa equipe e do padrão de qualidade que mantemos. #empreendedorismo #estetica', media: [{ url: 'https://images.pexels.com/photos/8867431/pexels-photo-8867431.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.carolina_fernandes._id, caption: 'Um rosto harmônico muda tudo! Os procedimentos com bioestimuladores de colágeno são seguros e com ótimos resultados. #biomedicinaestetica #harmonizacaofacial', media: [{ url: 'https://images.pexels.com/photos/6529841/pexels-photo-6529841.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.rafael_oliveira._id, caption: 'Antes e depois que fala, né? Corte e finalização impecáveis. Satisfação do cliente é a meta. 💈 #barbershop #hairstyle', media: [{ url: 'https://images.pexels.com/photos/2065195/pexels-photo-2065195.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.andre_silva._id, caption: 'Sua marca pessoal é o que as pessoas dizem sobre você quando você não está na sala. Vamos construir a sua juntos? #branding #posicionamento', media: [{ url: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.marcelo_campos._id, caption: 'A drenagem linfática no pós-operatório de cirurgias plásticas é essencial para reduzir o inchaço e acelerar a recuperação. #fisioterapiadermatofuncional #posoperatorio', media: [{ url: 'https://images.pexels.com/photos/4506269/pexels-photo-4506269.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.anaclara._id, caption: 'Delineado gráfico para sair do óbvio! Gostam de makes mais ousadas? Me conta aqui! 👀', media: [{ url: 'https://images.pexels.com/photos/3018845/pexels-photo-3018845.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.nathaliamiotto._id, caption: 'Toxina botulínica preventiva: começar cedo pode evitar a formação de rugas profundas no futuro. Converse com seu dermatologista!', media: [{ url: 'https://images.pexels.com/photos/5215017/pexels-photo-5215017.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.felipe._id, caption: 'Erro comum no marketing para estética: não ter um público-alvo definido. Falar com todo mundo é o mesmo que não falar com ninguém. #marketingdeconteudo', media: [{ url: 'https://images.pexels.com/photos/590022/pexels-photo-590022.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
-            { user: userMap.isabela_costa._id, caption: 'Neutralização de cor em sobrancelhas que ficaram com tons indesejados. É possível corrigir e ter um resultado lindo de novo! #micropigmentacao #correcao', media: [{ url: 'https://images.pexels.com/photos/4126681/pexels-photo-4126681.jpeg?auto=compress&cs=tinysrgb&w=500', mediaType: 'image' }] },
+            { user: userMap.anaclara._id, caption: 'Resultado da make de hoje! Um esfumado clássico que nunca erra. O que acharam? 💄 #makeup #makeuptutorial', media: [{ url: cropImageUrl('https://images.pexels.com/photos/3762662/pexels-photo-3762662.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.nathaliamiotto._id, caption: 'Não se esqueça do protetor solar, mesmo em dias nublados! A prevenção é o melhor tratamento. #dermatologia #sunscreen', media: [{ url: cropImageUrl('https://images.pexels.com/photos/3762870/pexels-photo-3762870.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.emmilly._id, caption: 'Design de sobrancelhas que realça o olhar. Agende seu horário!', media: [{ url: cropImageUrl('https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.henrique._id, caption: 'Trabalhando em uma nova feature para o app. Alguma sugestão do que vocês gostariam de ver por aqui? 👨‍💻 #devlife #feedback', media: [{ url: cropImageUrl('https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.felipe._id, caption: '3 dicas de ouro para profissionais da beleza se destacarem no Instagram. A primeira é: constância! Quer saber as outras? #marketingdigital', media: [{ url: cropImageUrl('https://images.pexels.com/photos/6476587/pexels-photo-6476587.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.lucas_santos._id, caption: 'A foto de perfil é seu cartão de visitas. Invista em uma imagem que transmita seu profissionalismo. #fotografia #brandingpessoal', media: [{ url: cropImageUrl('https://images.pexels.com/photos/3771089/pexels-photo-3771089.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.sofia_lima._id, caption: 'Dica de hoje: suco verde para uma pele incrível! A beleza que vem de dentro reflete por fora. 🍍 #nutricao #pelesaudavel', media: [{ url: cropImageUrl('https://images.pexels.com/photos/1346347/pexels-photo-1346347.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.isabela_costa._id, caption: 'O poder da micropigmentação labial. Lábios corados e definidos por muito mais tempo. #pmu #microlabial', media: [{ url: cropImageUrl('https://images.pexels.com/photos/7879975/pexels-photo-7879975.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.beatriz_rocha._id, caption: 'Qual a sua mensagem? O posicionamento de marca pessoal pode transformar seu visual e carreira. #consultoriadeimagem', media: [{ url: cropImageUrl('https://images.pexels.com/photos/5708253/pexels-photo-5708253.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.vanessa_melo._id, caption: 'Recebidos do mês! 😍 Tantas novidades incríveis para testar com vocês. Qual produto querem ver resenha primeiro? #unboxing #beautytips', media: [{ url: cropImageUrl('https://images.pexels.com/photos/7262995/pexels-photo-7262995.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.rodrigo_barros._id, caption: 'Visitando nossa nova unidade. Muito orgulhoso do crescimento da nossa equipe e do padrão de qualidade que mantemos. #empreendedorismo #estetica', media: [{ url: cropImageUrl('https://images.pexels.com/photos/8867431/pexels-photo-8867431.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.carolina_fernandes._id, caption: 'Um rosto harmônico muda tudo! Os procedimentos com bioestimuladores de colágeno são seguros e com ótimos resultados. #biomedicinaestetica #harmonizacaofacial', media: [{ url: cropImageUrl('https://images.pexels.com/photos/6529841/pexels-photo-6529841.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.rafael_oliveira._id, caption: 'Antes e depois que fala, né? Corte e finalização impecáveis. Satisfação do cliente é a meta. 💈 #barbershop #hairstyle', media: [{ url: cropImageUrl('https://images.pexels.com/photos/2065195/pexels-photo-2065195.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.andre_silva._id, caption: 'Sua marca pessoal é o que as pessoas dizem sobre você quando você não está na sala. Vamos construir a sua juntos? #branding #posicionamento', media: [{ url: cropImageUrl('https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.marcelo_campos._id, caption: 'A drenagem linfática no pós-operatório de cirurgias plásticas é essencial para reduzir o inchaço e acelerar a recuperação. #fisioterapiadermatofuncional #posoperatorio', media: [{ url: cropImageUrl('https://images.pexels.com/photos/4506269/pexels-photo-4506269.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.anaclara._id, caption: 'Delineado gráfico para sair do óbvio! Gostam de makes mais ousadas? Me conta aqui! 👀', media: [{ url: cropImageUrl('https://images.pexels.com/photos/3018845/pexels-photo-3018845.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.nathaliamiotto._id, caption: 'Toxina botulínica preventiva: começar cedo pode evitar a formação de rugas profundas no futuro. Converse com seu dermatologista!', media: [{ url: cropImageUrl('https://images.pexels.com/photos/5215017/pexels-photo-5215017.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.felipe._id, caption: 'Erro comum no marketing para estética: não ter um público-alvo definido. Falar com todo mundo é o mesmo que não falar com ninguém. #marketingdeconteudo', media: [{ url: cropImageUrl('https://images.pexels.com/photos/590022/pexels-photo-590022.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
+            { user: userMap.isabela_costa._id, caption: 'Neutralização de cor em sobrancelhas que ficaram com tons indesejados. É possível corrigir e ter um resultado lindo de novo! #micropigmentacao #correcao', media: [{ url: cropImageUrl('https://images.pexels.com/photos/4126681/pexels-photo-4126681.jpeg?auto=compress&cs=tinysrgb&w=500'), mediaType: 'image' }] },
         ];
 
         let createdPosts = await Post.insertMany(postsData);
@@ -386,7 +405,6 @@ const importData = async () => {
                 post.comments.push(...commentIds);
             }
             
-            // Salva o post com as curtidas e os IDs dos comentários
             await post.save();
         }
 
@@ -400,14 +418,14 @@ const importData = async () => {
 
         console.log('🤳 Criando mais stories...');
         const storiesData = [
-            { user: userMap.jacquetenorio._id, mediaUrl: 'https://images.pexels.com/photos/4041392/pexels-photo-4041392.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 15 },
-            { user: userMap.anaclara._id, mediaUrl: 'https://images.pexels.com/photos/5938503/pexels-photo-5938503.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 10 },
-            { user: userMap.vanessa_melo._id, mediaUrl: 'https://images.pexels.com/photos/7697789/pexels-photo-7697789.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 10 },
-            { user: userMap.felipe._id, mediaUrl: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 20 },
-            { user: userMap.pedro_almeida._id, mediaUrl: 'https://images.pexels.com/photos/2294361/pexels-photo-2294361.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 15 },
-            { user: userMap.rodrigo_barros._id, mediaUrl: 'https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 10 },
-            { user: userMap.isabela_costa._id, mediaUrl: 'https://images.pexels.com/photos/12093859/pexels-photo-12093859.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 12 },
-            { user: userMap.henrique._id, mediaUrl: 'https://images.pexels.com/photos/270348/pexels-photo-270348.jpeg?auto=compress&cs=tinysrgb&w=500', duration: 15 },
+            { user: userMap.jacquetenorio._id, mediaUrl: cropImageUrl('https://images.pexels.com/photos/4041392/pexels-photo-4041392.jpeg?auto=compress&cs=tinysrgb&w=500', 720), duration: 15 },
+            { user: userMap.anaclara._id, mediaUrl: cropImageUrl('https://images.pexels.com/photos/5938503/pexels-photo-5938503.jpeg?auto=compress&cs=tinysrgb&w=500', 720), duration: 10 },
+            { user: userMap.vanessa_melo._id, mediaUrl: cropImageUrl('https://images.pexels.com/photos/7697789/pexels-photo-7697789.jpeg?auto=compress&cs=tinysrgb&w=500', 720), duration: 10 },
+            { user: userMap.felipe._id, mediaUrl: cropImageUrl('https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=500', 720), duration: 20 },
+            { user: userMap.pedro_almeida._id, mediaUrl: cropImageUrl('https://images.pexels.com/photos/2294361/pexels-photo-2294361.jpeg?auto=compress&cs=tinysrgb&w=500', 720), duration: 15 },
+            { user: userMap.rodrigo_barros._id, mediaUrl: cropImageUrl('https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=500', 720), duration: 10 },
+            { user: userMap.isabela_costa._id, mediaUrl: cropImageUrl('https://images.pexels.com/photos/12093859/pexels-photo-12093859.jpeg?auto=compress&cs=tinysrgb&w=500', 720), duration: 12 },
+            { user: userMap.henrique._id, mediaUrl: cropImageUrl('https://images.pexels.com/photos/270348/pexels-photo-270348.jpeg?auto=compress&cs=tinysrgb&w=500', 720), duration: 15 },
         ];
         await Story.insertMany(storiesData);
         console.log(`✅ ${storiesData.length} stories criados.`);
@@ -563,12 +581,15 @@ const importData = async () => {
 
 const destroyData = async () => {
     try {
+        await connectDB();
         console.log('🔥 Destruindo todos os dados...');
         await Post.deleteMany();
         await User.deleteMany();
+        await Ad.deleteMany();
         await Chat.deleteMany();
         await Message.deleteMany();
         await Story.deleteMany();
+        await Comment.deleteMany();
         console.log('✅ Dados destruídos com sucesso!');
         process.exit();
     } catch (error) {

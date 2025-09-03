@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import useMediaQuery from '../hooks/useMediaQuery';
@@ -6,8 +6,10 @@ import { IoImageOutline } from "react-icons/io5";
 import { IoIosArrowBack } from "react-icons/io";
 import { GoPencil } from "react-icons/go";
 import api from '../api/axios';
+import Cropper from 'react-cropper';
+import 'cropperjs/dist/cropper.css';
 
-// --- Styled Components (O TEU CÓDIGO ORIGINAL - SEM ALTERAÇÕES) ---
+// --- Styled Components ---
 
 const slideUp = keyframes`
   from { transform: translateY(100%); }
@@ -24,6 +26,7 @@ const ModalOverlay = styled.div`
   z-index: 1000;
   display: flex;
   align-items: flex-end;
+  justify-content: center; /* Adicionado para centralizar o modal de recorte */
 `;
 
 const ModalContent = styled.div`
@@ -86,7 +89,7 @@ const MediaContainer = styled.div`
   justify-content: center;
   flex-grow: 1;
   min-height: 200px;
-  overflow: hidden; // Adicionado para conter os previews
+  overflow: hidden;
 `;
 
 const BackButton = styled.button`
@@ -131,22 +134,20 @@ const InfoText = styled.p`
   word-wrap: break-word;
 `;
 
-// --- INÍCIO DAS MODIFICAÇÕES DE ESTILO PARA MÚLTIPLAS MÍDIAS ---
 const PreviewGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   gap: 8px;
   width: 100%;
-  max-height: 250px; // Altura máxima para a grelha
-  overflow-y: auto; // Scroll se houver muitas mídias
+  max-height: 250px;
+  overflow-y: auto;
   margin-bottom: 16px;
 `;
 
 const PreviewItem = styled.div`
   position: relative;
   width: 100%;
-  padding-bottom: 100%; /* Força o aspect ratio 1:1 */
-
+  padding-bottom: 100%;
   img, video {
     position: absolute;
     top: 0;
@@ -175,8 +176,6 @@ const RemoveButton = styled.button`
   padding: 0;
   z-index: 2;
 `;
-// --- FIM DAS MODIFICAÇÕES DE ESTILO ---
-
 
 const GalleryButton = styled.button`
   padding: 12px 128px;
@@ -257,44 +256,126 @@ const DesktopChoiceButton = styled(Link)`
     }
 `;
 
+// --- Styled Components para o Modal de Recorte (adicionados) ---
+const CropperModalOverlay = styled.div`
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000; /* Z-index maior para sobrepor o modal de criação */
+`;
+
+const CropperModalContent = styled.div`
+    background-color: #1a1a1a; /* Fundo escuro para o cropper */
+    padding-top: 10px;
+    border-radius: 12px;
+    width: 95%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+`;
+
+const CropperModalHeader = styled.h3`
+    font-size: 1.2rem;
+    color: white;
+    text-align: center;
+    margin: 0;
+    padding-bottom: 10px;
+`;
+
+const CropperModalFooter = styled.div`
+    display: flex;
+    justify-content: space-around; /* Botões espaçados */
+    padding: 15px;
+    border-top: 1px solid #333;
+`;
+
+const CropperModalButton = styled.button`
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: #333;
+    color: white;
+
+    &.primary {
+        background-color: rgb(254, 121, 13);
+    }
+`;
 
 const CreatePage = () => {
     const isMobile = useMediaQuery('(max-width: 768px)');
     const navigate = useNavigate();
-
-    // --- INÍCIO DAS ALTERAÇÕES LÓGICAS ---
     const [view, setView] = useState('selection');
     const [caption, setCaption] = useState('');
-    const [files, setFiles] = useState([]); // Alterado para array
-    const [previews, setPreviews] = useState([]); // Alterado para array
+    const [files, setFiles] = useState([]);
+    const [previews, setPreviews] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     
     const fileInputRef = useRef(null);
+    const [imageToCrop, setImageToCrop] = useState({ src: null, file: null });
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const cropperRef = useRef(null);
 
     const handleCreatePostClick = () => setView('post');
     const handleOpenGallery = () => fileInputRef.current.click();
     
     const handleFileChange = (e) => {
       const selectedFiles = Array.from(e.target.files);
-      
       if (files.length + selectedFiles.length > 10) {
         alert('Podes selecionar no máximo 10 mídias.');
         return;
       }
 
-      setFiles(prevFiles => [...prevFiles, ...selectedFiles]);
+      const imageFile = selectedFiles.find(f => f.type.startsWith('image/'));
+      const otherFiles = selectedFiles.filter(f => !f.type.startsWith('image/'));
 
-      const newPreviews = selectedFiles.map(file => ({
-        url: URL.createObjectURL(file),
-        type: file.type
-      }));
-      setPreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
+      if (imageFile) {
+          setImageToCrop({ src: URL.createObjectURL(imageFile), file: imageFile });
+          setIsCropperOpen(true);
+      }
+      
+      setFiles(prevFiles => [...prevFiles, ...otherFiles]);
+      e.target.value = null;
+    };
+
+    const handleCrop = () => {
+        if (typeof cropperRef.current?.cropper === "undefined") return;
+        
+        const cropper = cropperRef.current?.cropper;
+        cropper.getCroppedCanvas().toBlob((blob) => {
+            const croppedFile = new File([blob], imageToCrop.file.name, { type: imageToCrop.file.type });
+            const croppedUrl = URL.createObjectURL(croppedFile);
+            
+            setFiles(prevFiles => [croppedFile, ...prevFiles]);
+            setPreviews(prev => [{ url: croppedUrl, type: croppedFile.type }, ...prev]);
+            
+            setIsCropperOpen(false);
+            URL.revokeObjectURL(imageToCrop.src); // Limpa o URL do objeto original
+            setImageToCrop({ src: null, file: null });
+        }, imageToCrop.file.type);
+    };
+
+    const handleSkipCrop = () => {
+        const originalFile = imageToCrop.file;
+        setFiles(prevFiles => [originalFile, ...prevFiles]);
+        setPreviews(prev => [{ url: imageToCrop.src, type: originalFile.type }, ...prev]);
+        setIsCropperOpen(false);
+        setImageToCrop({ src: null, file: null });
     };
 
     const handleRemoveMedia = (indexToRemove) => {
         setFiles(prevFiles => prevFiles.filter((_, index) => index !== indexToRemove));
         setPreviews(prevPreviews => {
-            // Revoga o URL do objeto para libertar memória
             URL.revokeObjectURL(prevPreviews[indexToRemove].url);
             return prevPreviews.filter((_, index) => index !== indexToRemove);
         });
@@ -326,7 +407,17 @@ const CreatePage = () => {
             setIsLoading(false);
         }
     };
-    // --- FIM DAS ALTERAÇÕES LÓGICAS ---
+    
+    // Limpeza dos Object URLs
+    useEffect(() => {
+        return () => {
+            previews.forEach(p => URL.revokeObjectURL(p.url));
+            if (imageToCrop.src) {
+                URL.revokeObjectURL(imageToCrop.src);
+            }
+        };
+    }, [previews, imageToCrop.src]);
+
 
     if (!isMobile) {
         return (
@@ -339,77 +430,101 @@ const CreatePage = () => {
     }
 
     return (
-        <ModalOverlay onClick={() => navigate(-1)}>
-            {view === 'selection' && (
-                <ModalContent onClick={(e) => e.stopPropagation()}>
-                    <ModalHeader>Criar</ModalHeader>
-                    <ChoiceButton as="button" onClick={handleCreatePostClick}>Criar Post</ChoiceButton>
-                    <ChoiceButton to="/stories/novo">Criar Story</ChoiceButton>
-                </ModalContent>
-            )}
+        <>
+            <ModalOverlay onClick={() => view === 'selection' && navigate(-1)}>
+                {view === 'selection' && (
+                    <ModalContent onClick={(e) => e.stopPropagation()}>
+                        <ModalHeader>Criar</ModalHeader>
+                        <ChoiceButton as="button" onClick={handleCreatePostClick}>Criar Post</ChoiceButton>
+                        <ChoiceButton to="/stories/novo">Criar Story</ChoiceButton>
+                    </ModalContent>
+                )}
 
-            {view === 'post' && (
-                <PostForm onSubmit={handlePublish} onClick={(e) => e.stopPropagation()}>
-                    <ModalHeader>
-                        <BackButton type="button" onClick={() => setView('selection')}>
-                            <IoIosArrowBack />
-                        </BackButton>
-                        Postagem Feed
-                    </ModalHeader>
-                    
-                    <MediaContainer>
-                        {previews.length > 0 ? (
-                            <PreviewGrid>
-                                {previews.map((preview, index) => (
-                                    <PreviewItem key={index}>
-                                        <RemoveButton type="button" onClick={() => handleRemoveMedia(index)}>x</RemoveButton>
-                                        {preview.type.startsWith('image/') ? (
-                                            <img src={preview.url} alt={`Pré-visualização ${index + 1}`} />
-                                        ) : (
-                                            <video src={preview.url} muted />
-                                        )}
-                                    </PreviewItem>
-                                ))}
-                            </PreviewGrid>
-                        ) : (
-                            <>
-                                <IconContainer><IoImageOutline /></IconContainer>
-                                <InfoText>
-                                    Clique no botão abaixo para acessar sua galeria e selecionar as fotos ou vídeos
-                                </InfoText>
-                            </>
-                        )}
+                {view === 'post' && (
+                    <PostForm onSubmit={handlePublish} onClick={(e) => e.stopPropagation()}>
+                        <ModalHeader>
+                            <BackButton type="button" onClick={() => setView('selection')}>
+                                <IoIosArrowBack />
+                            </BackButton>
+                            Postagem Feed
+                        </ModalHeader>
                         
-                        <input 
-                          type="file" 
-                          ref={fileInputRef} 
-                          style={{ display: 'none' }} 
-                          onChange={handleFileChange}
-                          accept="image/*,video/*"
-                          multiple // Permite múltiplos ficheiros
+                        <MediaContainer>
+                            {previews.length > 0 ? (
+                                <PreviewGrid>
+                                    {previews.map((preview, index) => (
+                                        <PreviewItem key={preview.url}>
+                                            <RemoveButton type="button" onClick={() => handleRemoveMedia(index)}>x</RemoveButton>
+                                            {preview.type.startsWith('image/') ? (
+                                                <img src={preview.url} alt={`Pré-visualização ${index + 1}`} />
+                                            ) : (
+                                                <video src={preview.url} muted />
+                                            )}
+                                        </PreviewItem>
+                                    ))}
+                                </PreviewGrid>
+                            ) : (
+                                <>
+                                    <IconContainer><IoImageOutline /></IconContainer>
+                                    <InfoText>
+                                        Clique no botão abaixo para acessar sua galeria e selecionar as fotos ou vídeos
+                                    </InfoText>
+                                </>
+                            )}
+                            
+                            <input 
+                              type="file" 
+                              ref={fileInputRef} 
+                              style={{ display: 'none' }} 
+                              onChange={handleFileChange}
+                              accept="image/*,video/*"
+                              multiple
+                            />
+                            <GalleryButton type="button" onClick={handleOpenGallery}>
+                                {previews.length > 0 ? 'Adicionar mais' : 'Abrir galeria'}
+                            </GalleryButton>
+                        </MediaContainer>
+                        
+                        <DescriptionWrapper>
+                            <Icon />
+                              <StyledTextarea
+                                placeholder="Descrição da postagem..."
+                                value={caption}
+                                onChange={(e) => setCaption(e.target.value)}
+                                maxLength={140}
+                              />
+                            <CharCounter>{caption.length}/140</CharCounter>
+                        </DescriptionWrapper>
+                        
+                        <PublishButton type="submit" disabled={files.length === 0 || !caption.trim() || isLoading}>
+                            {isLoading ? 'Publicando...' : 'Criar Post'}
+                        </PublishButton>
+                    </PostForm>
+                )}
+            </ModalOverlay>
+
+            {isCropperOpen && (
+                <CropperModalOverlay>
+                    <CropperModalContent>
+                        <CropperModalHeader>Ajustar Imagem</CropperModalHeader>
+                        <Cropper
+                            ref={cropperRef}
+                            src={imageToCrop.src}
+                            style={{ height: 'calc(100% - 120px)', width: '100%' }}
+                            aspectRatio={1}
+                            viewMode={1}
+                            guides={true}
+                            background={false}
+                            responsive={true}
+                            checkOrientation={false}
                         />
-                        <GalleryButton type="button" onClick={handleOpenGallery}>
-                            {previews.length > 0 ? 'Adicionar mais' : 'Abrir galeria'}
-                        </GalleryButton>
-                    </MediaContainer>
-                    
-                    <DescriptionWrapper>
-                        <Icon />
-                          <StyledTextarea
-                            placeholder="Descrição da postagem..."
-                            value={caption}
-                            onChange={(e) => setCaption(e.target.value)}
-                            maxLength={140}
-                          />
-                        <CharCounter>{caption.length}/140</CharCounter>
-                    </DescriptionWrapper>
-                    
-                    <PublishButton type="submit" disabled={files.length === 0 || !caption.trim() || isLoading}>
-                        {isLoading ? 'Publicando...' : 'Criar Post'}
-                    </PublishButton>
-                </PostForm>
+                        <CropperModalFooter>
+                            <CropperModalButton className="primary" onClick={handleCrop}>Recortar e Adicionar</CropperModalButton>
+                        </CropperModalFooter>
+                    </CropperModalContent>
+                </CropperModalOverlay>
             )}
-        </ModalOverlay>
+        </>
     );
 };
 

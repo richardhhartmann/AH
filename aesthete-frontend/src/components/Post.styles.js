@@ -18,20 +18,20 @@ const likeAnimation = keyframes`
 
 // Container para posicionar a animação sobre a imagem
 export const PostImageContainer = styled.div`
-  position: relative; // Essencial para posicionar o ícone de animação
+  position: relative;
   cursor: pointer;
-  background-color: \#000;
+  background-color: #fff; /* <-- CORREÇÃO */
 
-  padding-bottom: ${props => props.aspectRatio ? `${props.aspectRatio * 100}%` : '100%'}; /* Padrão 1:1 se a proporção não estiver definida \*/
+  padding-bottom: ${props => props.aspectRatio ? `${props.aspectRatio * 100}%` : '100%'};
   height: 0;
   overflow: hidden;
 
-  & \> div { /\* O container direto do elemento de mídia */
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  & > div {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
   }
 `;
 

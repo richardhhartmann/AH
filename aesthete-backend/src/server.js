@@ -26,15 +26,13 @@ const io = initSocket(server);
 
 const allowedOrigins = ['http://localhost:3000', 'https://ah-three.vercel.app'];
 app.use(cors({
-    origin: function (origin, callback) {
-
-        // Sua lógica de verificação continua a mesma
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    }
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    }
 }));
 
 app.use(express.json());
@@ -53,6 +51,20 @@ app.use('/api/users', userRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ads', adRoutes);
+
+// --- CORREÇÃO: ADICIONAR ESTE GESTOR DE ERROS GLOBAL ---
+// Este middleware irá apanhar quaisquer erros que ocorram nos seus routes e formatá-los como JSON.
+app.use((err, req, res, next) => {
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  res.status(statusCode);
+  console.error("ERRO NÃO TRATADO NO SERVIDOR:", err.stack); // Log detalhado no servidor
+  res.json({
+    message: err.message,
+    // Em produção, é boa prática não expor a stack do erro
+    stack: process.env.NODE_ENV === 'production' ? '🥞' : err.stack,
+  });
+});
+
 
 const PORT = process.env.PORT || 10000;
 

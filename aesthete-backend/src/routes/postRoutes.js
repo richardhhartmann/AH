@@ -1,11 +1,9 @@
-// Caminho: src/routes/postRoutes.js 
-
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middlewares/authMiddleware');
 const upload = require('../config/cloudinary');
+const timeoutMiddleware = require('../middlewares/timeoutMiddleware'); // <-- 1. Importar
 
-// Importando TODAS as funções necessárias
 const { 
     createPost, 
     getFeedPosts, 
@@ -13,17 +11,19 @@ const {
     getPostById, 
     deletePost,
     addCommentToPost,
-    getExploreFeed // <-- Importa a nova função
+    getExploreFeed
 } = require('../controllers/postController');
+
+const FIVE_MINUTES = 5 * 60 * 1000;
 
 // Rota para o feed "Seguindo"
 router.get('/feed', protect, getFeedPosts);
 
 // Rota para o feed "Explorar"
-router.get('/explore', protect, getExploreFeed); // <-- ADICIONA A NOVA ROTA
+router.get('/explore', protect, getExploreFeed);
 
-// Rota para criar um novo post
-router.post('/', protect, upload.array('media', 10), createPost);
+// --- 2. APLICAR O MIDDLEWARE AQUI ---
+router.post('/', protect, timeoutMiddleware(FIVE_MINUTES), upload.array('media', 10), createPost);
 
 // Rota para buscar ou deletar um post específico
 router.route('/:id')

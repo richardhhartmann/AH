@@ -5,6 +5,7 @@ import { useStoryStatus } from '../context/StoryContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { fetchChats } from '../features/chat/chatSlice';
+import { addOrUpdateChat } from '../features/chat/chatSlice'; // <-- 1. IMPORTAR A NOVA ACTION
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
@@ -112,12 +113,19 @@ const Post = React.memo(React.forwardRef(({ post: initialPost, onOpenMobileComme
     // --- 2. NOVA FUNÇÃO PARA INICIAR O CHAT ---
     const handleStartChat = async () => {
         if (!post?.user?._id) return;
+        console.log('--- [POST COMPONENT] handleStartChat ---');
+        console.log(`Iniciando chat com userId: ${post.user._id}`);
         try {
-            const { data } = await api.post('/chats', { userId: post.user._id });
-            dispatch(fetchChats());
-            navigate(`/chat/${data._id}`);
+            const { data: chat } = await api.post('/chats', { userId: post.user._id });
+            console.log('Resposta da API recebida:', JSON.stringify(chat, null, 2));
+
+            console.log('Disparando a ação addOrUpdateChat...');
+            dispatch(addOrUpdateChat(chat));
+            
+            console.log(`Navegando para /chat/${chat._id}`);
+            navigate(`/chat/${chat._id}`);
         } catch (error) {
-            console.error("Erro ao iniciar chat a partir do post", error);
+            console.error("❌ Erro ao iniciar chat a partir do post", error);
         }
     };
 

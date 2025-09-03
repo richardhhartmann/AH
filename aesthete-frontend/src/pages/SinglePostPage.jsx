@@ -99,7 +99,6 @@ const MobileFeedContainer = styled.div`
   height: calc(100vh - 60px);
   overflow-y: auto;
   background-color: #fff;
-  scroll-snap-type: y mandatory;
 `;
 
 const MobilePostWrapper = styled.div`
@@ -110,7 +109,6 @@ const MobilePostWrapper = styled.div`
   position: relative;
   background-color: #fff;
   border-bottom: 1px solid #dbdbdb;
-  scroll-snap-align: start;
 `;
 
 const MobileHeader = styled.div`
@@ -160,7 +158,8 @@ const MobileMediaContainer = styled.div`
     img, video { 
         width: 100%; 
         height: 100%;
-        object-fit: contain; 
+        /* --- CORREÇÃO APLICADA AQUI --- */
+        object-fit: cover; /* Alterado de 'contain' para 'cover' */
     }
 `;
 

@@ -134,11 +134,6 @@ exports.getExploreFeed = async (req, res) => {
     }
 };
 
-// ... (Restante do arquivo: createPost, likePost, getPostById, deletePost, addCommentToPost)
-// O restante das funções do arquivo permanecem inalteradas. Copie e cole apenas as funções 
-// getFeedPosts e getExploreFeed se preferir, ou o arquivo completo para garantir.
-// ... (código das outras funções aqui)
-
 exports.createPost = async (req, res) => {
     try {
         const { caption } = req.body;
@@ -253,10 +248,16 @@ exports.deletePost = async (req, res) => {
         if (post.user.toString() !== req.user.id) {
             return res.status(401).json({ message: 'Não autorizado' });
         }
-
-        const publicId = post.mediaUrl.split('/').pop().split('.')[0];
-        if (publicId) {
-            await cloudinary.uploader.destroy(publicId);
+        
+        // Itera sobre o array de media para apagar cada ficheiro do Cloudinary
+        if (post.media && post.media.length > 0) {
+            for (const mediaItem of post.media) {
+                const publicIdWithFolder = mediaItem.url.split('/').slice(-2).join('/').split('.')[0];
+                if (publicIdWithFolder) {
+                    const resourceType = mediaItem.mediaType === 'video' ? 'video' : 'image';
+                    await cloudinary.uploader.destroy(publicIdWithFolder, { resource_type: resourceType });
+                }
+            }
         }
 
         await Comment.deleteMany({ post: post._id });

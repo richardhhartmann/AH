@@ -1,3 +1,4 @@
+const mongoose = require('mongoose'); // Mongoose já está importado
 const Chat = require('../models/Chat');
 const User = require('../models/User');
 const Message = require('../models/Message');
@@ -12,37 +13,51 @@ exports.accessChat = async (req, res) => {
     const { userId } = req.body;
     const loggedInUserId = req.user.id;
 
+    console.log('--- [BACKEND] accessChat ---');
+    console.log(`User ID do destinatário: ${userId}`);
+    console.log(`User ID logado: ${loggedInUserId}`);
+
+
     if (!userId) {
+        console.log('Erro: userId não fornecido.');
         return res.status(400).json({ message: "ID do usuário não fornecido." });
     }
 
     try {
-        // VERSÃO MELHORADA DA CONSULTA:
-        // Procura por uma conversa 1-a-1 que contenha EXATAMENTE ambos os usuários
-        let chat = await Chat.findOne({
+        // --- CORREÇÃO APLICADA AQUI ---
+        // Convertemos explicitamente os IDs de string para ObjectId do Mongoose.
+        // Isto garante que a consulta ao banco de dados seja 100% precisa.
+        const findQuery = {
             isGroupChat: false,
-            participants: { 
-                $all: [loggedInUserId, userId], // Garante que ambos os IDs estejam no array
-                $size: 2                        // Garante que SÃO APENAS esses dois
+            participants: {
+                $all: [
+                    new mongoose.Types.ObjectId(loggedInUserId),
+                    new mongoose.Types.ObjectId(userId)
+                ],
+                $size: 2
             }
-        })
-        .populate("participants", "-password")
-        .populate({
-            path: "lastMessage",
-            populate: {
-                path: "sender",
-                select: "username avatar"
-            }
-        });
+        };
+        
+        console.log('Procurando por chat com a query:', JSON.stringify(findQuery, null, 2));
 
-        // Se a conversa já existe, retorna ela
+        let chat = await Chat.findOne(findQuery)
+            .populate("participants", "-password")
+            .populate({
+                path: "lastMessage",
+                populate: {
+                    path: "sender",
+                    select: "username avatar"
+                }
+            });
+
         if (chat) {
+            console.log(`✅ Chat existente encontrado. ID: ${chat._id}`);
             return res.status(200).json(chat);
         }
 
-        // Se não existe, cria uma nova
+        console.log('⚠️ Nenhum chat existente encontrado. Criando um novo...');
         const newChatData = {
-            chatName: "sender", // Placeholder
+            chatName: "sender",
             isGroupChat: false,
             participants: [loggedInUserId, userId],
         };
@@ -53,14 +68,17 @@ exports.accessChat = async (req, res) => {
             "participants",
             "-password"
         );
-
-        res.status(201).json(fullChat); // Usa 201 para indicar que um novo recurso foi criado
+        
+        console.log(`✅ Novo chat criado com sucesso. ID: ${fullChat._id}`);
+        res.status(201).json(fullChat);
 
     } catch (error) {
-        console.error("Erro em accessChat:", error);
+        console.error("❌ Erro em accessChat:", error);
         res.status(500).json({ message: "Erro interno do servidor." });
     }
 };
+
+// --- O restante do ficheiro permanece o mesmo ---
 
 // @desc    Buscar todas as conversas do usuário logado
 // @route   GET /api/chats
@@ -76,12 +94,10 @@ exports.fetchChats = async (req, res) => {
 
         const chatsWithUnread = await Promise.all(
             chats.map(async (chat) => {
-                // --- AQUI ESTÁ A CORREÇÃO ---
-                // Adicionamos a condição 'sender: { $ne: req.user.id }'
                 const unreadCount = await Message.countDocuments({
                     chat: chat._id,
-                    readBy: { $ne: req.user.id }, // Onde eu não li
-                    sender: { $ne: req.user.id }  // E o remetente não sou eu
+                    readBy: { $ne: req.user.id },
+                    sender: { $ne: req.user.id }
                 });
                 
                 return { ...chat.toObject(), unreadCount };
@@ -101,7 +117,7 @@ exports.markChatAsRead = async (req, res) => {
     try {
         await Message.updateMany(
             { chat: req.params.chatId, readBy: { $ne: req.user.id } },
-            { $addToSet: { readBy: req.user.id } } // Adiciona o ID do usuário ao array 'readBy'
+            { $addToSet: { readBy: req.user.id } }
         );
         res.status(200).json({ message: 'Mensagens marcadas como lidas.' });
     } catch (error) {
@@ -135,15 +151,11 @@ exports.deleteChat = async (req, res) => {
             return res.status(404).json({ message: "Conversa não encontrada." });
         }
 
-        // Verifica se o usuário que está tentando deletar faz parte da conversa
         if (!chat.participants.includes(userId)) {
             return res.status(403).json({ message: "Não autorizado a deletar esta conversa." });
         }
 
-        // Deleta todas as mensagens associadas a esta conversa
         await Message.deleteMany({ chat: chatId });
-
-        // Deleta a conversa
         await chat.deleteOne();
 
         res.status(200).json({ message: "Conversa deletada com sucesso." });
@@ -162,8 +174,6 @@ exports.uploadAudioMessage = async (req, res) => {
             return res.status(400).json({ message: 'Nenhum arquivo de áudio enviado.' });
         }
 
-        // --- MUDANÇA PRINCIPAL ---
-        // Pegamos o chatId E a duration que o frontend nos enviou.
         const { chatId, duration } = req.body;
         if (!chatId) {
             return res.status(400).json({ message: 'ID do Chat não fornecido.' });
@@ -174,24 +184,21 @@ exports.uploadAudioMessage = async (req, res) => {
             content: req.file.path.replace('http://', 'https://'),
             chat: chatId,
             contentType: 'audio',
-            audioDuration: Math.round(duration) // Usamos a duração vinda do frontend
+            audioDuration: Math.round(duration)
         });
 
         await Chat.findByIdAndUpdate(chatId, { lastMessage: message });
 
-        // --- AQUI ESTÁ A CORREÇÃO ---
-        // Usamos um 'populate' aninhado para buscar os detalhes dos participantes
         const fullMessage = await Message.findById(message._id)
             .populate('sender', 'username avatar')
             .populate({
                 path: 'chat',
                 populate: {
                     path: 'participants',
-                    select: 'username avatar' // Seleciona os campos que precisamos dos participantes
+                    select: 'username avatar'
                 }
             });
-
-        // Agora, 'fullMessage.chat.participants' é uma lista de objetos de usuário completos
+        
         fullMessage.chat.participants.forEach(user => {
             if (user._id.toString() !== req.user.id.toString()) {
                 req.io.to(user._id.toString()).emit('messageReceived', fullMessage);

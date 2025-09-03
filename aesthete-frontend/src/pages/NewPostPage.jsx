@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react'; // <-- CORREÇÃO: Adicionado 'useRef' e 'useEffect'
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import api from '../api/axios';
 import { IoArrowBack } from 'react-icons/io5';
+import Cropper from 'react-cropper';
+import 'cropperjs/dist/cropper.css'; // Garanta que a versão do cropperjs no package.json é a 1.5.13
+
+// --- Styled Components ---
 
 const PageWrapper = styled.div`
   max-width: 800px;
@@ -116,11 +120,57 @@ const CaptionTextarea = styled.textarea`
   }
 `;
 
-const FooterActions = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-top: 20px;
+// --- CORREÇÃO: Componentes de Modal que estavam faltando ---
+const ModalOverlay = styled.div`
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
 `;
+
+const ModalContent = styled.div`
+    background-color: white;
+    padding: 20px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+`;
+
+const ModalHeader = styled.h3`
+    font-size: 1.5rem;
+    margin-top: 0;
+    margin-bottom: 20px;
+`;
+
+const ModalFooter = styled.div`
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+`;
+
+const ModalButton = styled.button`
+    padding: 10px 20px;
+    border: 1px solid #dbdbdb;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    background-color: #efefef;
+
+    &.primary {
+        background-color: #0095f6;
+        color: white;
+        border-color: #0095f6;
+    }
+`;
+// --- FIM DA CORREÇÃO ---
 
 const NewPostPage = () => {
     const [step, setStep] = useState(1);
@@ -129,38 +179,68 @@ const NewPostPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
+    const [imageToCrop, setImageToCrop] = useState({ src: null, file: null });
+    const [isCropperOpen, setIsCropperOpen] = useState(false);
+    const cropperRef = useRef(null);
+
     const handleFileChange = (e) => {
         const selectedFiles = Array.from(e.target.files);
         if (files.length + selectedFiles.length > 10) {
             alert('Podes carregar no máximo 10 ficheiros.');
             return;
         }
-        setFiles(prevFiles => [...prevFiles, ...selectedFiles]);
+
+        const imageFile = selectedFiles.find(f => f.type.startsWith('image/'));
+        const otherFiles = selectedFiles.filter(f => !f.type.startsWith('image/'));
+
+        if (imageFile) {
+            setImageToCrop({ src: URL.createObjectURL(imageFile), file: imageFile });
+            setIsCropperOpen(true);
+        }
+
+        setFiles(prevFiles => [...prevFiles, ...otherFiles]);
+        e.target.value = null;
+    };
+
+    const handleCrop = () => {
+        if (typeof cropperRef.current?.cropper === "undefined") {
+            return;
+        }
+        const cropper = cropperRef.current?.cropper;
+        cropper.getCroppedCanvas().toBlob((blob) => {
+            const croppedFile = new File([blob], imageToCrop.file.name, { type: imageToCrop.file.type });
+            setFiles(prevFiles => [croppedFile, ...prevFiles]);
+            setIsCropperOpen(false);
+            setImageToCrop({ src: null, file: null });
+        }, imageToCrop.file.type);
+    };
+
+    const handleSkipCrop = () => {
+        setFiles(prevFiles => [imageToCrop.file, ...prevFiles]);
+        setIsCropperOpen(false);
+        setImageToCrop({ src: null, file: null });
     };
 
     const handleRemoveFile = (index) => {
+        const fileToRemove = files[index];
+        if (fileToRemove.previewUrl) {
+            URL.revokeObjectURL(fileToRemove.previewUrl);
+        }
         setFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
     };
 
     const goToNextStep = () => {
-        if (files.length > 0) {
-            setStep(2);
-        } else {
-            alert('Por favor, selecione pelo menos um ficheiro de mídia.');
-        }
+        if (files.length > 0) setStep(2);
+        else alert('Por favor, selecione pelo menos um ficheiro de mídia.');
     };
 
-    const goToPreviousStep = () => {
-        setStep(1);
-    };
+    const goToPreviousStep = () => setStep(1);
 
     const handleSubmit = async () => {
         setIsLoading(true);
         const formData = new FormData();
         formData.append('caption', caption);
-        files.forEach(file => {
-            formData.append('media', file);
-        });
+        files.forEach(file => formData.append('media', file));
 
         try {
             await api.post('/posts', formData, {
@@ -175,76 +255,116 @@ const NewPostPage = () => {
         }
     };
 
+    const filePreviews = files.map(file => {
+        if (file.previewUrl) return file.previewUrl;
+        const url = URL.createObjectURL(file);
+        // eslint-disable-next-line no-param-reassign
+        file.previewUrl = url;
+        return url;
+    });
+
+    useEffect(() => {
+        return () => {
+            filePreviews.forEach(url => URL.revokeObjectURL(url));
+            if (imageToCrop.src) {
+                URL.revokeObjectURL(imageToCrop.src);
+            }
+        };
+    }, [filePreviews, imageToCrop.src]);
+
     return (
-        <PageWrapper>
-            {step === 1 && (
-                <>
-                    <Header>
-                        <BackButton onClick={() => navigate(-1)}><IoArrowBack /></BackButton>
-                        <h1>Nova publicação</h1>
-                        <NextButton onClick={goToNextStep} disabled={files.length === 0}>Próximo</NextButton>
-                    </Header>
-                    <ContentWrapper>
-                        <input
-                            type="file"
-                            id="file-upload"
-                            multiple
-                            accept="image/*,video/*"
-                            onChange={handleFileChange}
-                            style={{ display: 'none' }}
-                        />
-                        <FileInputContainer onClick={() => document.getElementById('file-upload').click()}>
-                            <p>Arrasta fotos e vídeos para aqui</p>
-                        </FileInputContainer>
-                        {files.length > 0 && (
-                            <PreviewGrid>
+        <>
+            <PageWrapper>
+                {step === 1 && (
+                    <>
+                        <Header>
+                            <BackButton onClick={() => navigate(-1)}><IoArrowBack /></BackButton>
+                            <h1>Nova publicação</h1>
+                            <NextButton onClick={goToNextStep} disabled={files.length === 0}>Próximo</NextButton>
+                        </Header>
+                        <ContentWrapper>
+                            <input
+                                type="file"
+                                id="file-upload"
+                                multiple
+                                accept="image/*,video/*"
+                                onChange={handleFileChange}
+                                style={{ display: 'none' }}
+                            />
+                            <FileInputContainer onClick={() => document.getElementById('file-upload').click()}>
+                                <p>Arrasta fotos e vídeos para aqui</p>
+                            </FileInputContainer>
+                            {files.length > 0 && (
+                                <PreviewGrid>
+                                    {files.map((file, index) => (
+                                        <PreviewItem key={index}>
+                                            {file.type.startsWith('image/') ? (
+                                                <img src={file.previewUrl} alt={`preview ${index}`} />
+                                            ) : (
+                                                <video src={file.previewUrl} muted />
+                                            )}
+                                            <RemoveButton onClick={() => handleRemoveFile(index)}>X</RemoveButton>
+                                        </PreviewItem>
+                                    ))}
+                                </PreviewGrid>
+                            )}
+                        </ContentWrapper>
+                    </>
+                )}
+
+                {step === 2 && (
+                    <>
+                        <Header>
+                            <BackButton onClick={goToPreviousStep}><IoArrowBack /></BackButton>
+                            <h1>Nova publicação</h1>
+                            <ShareButton onClick={handleSubmit} disabled={isLoading}>
+                                {isLoading ? 'Publicando...' : 'Publicar'}
+                            </ShareButton>
+                        </Header>
+                        <ContentWrapper>
+                            <PreviewGrid style={{ marginBottom: '20px' }}>
                                 {files.map((file, index) => (
                                     <PreviewItem key={index}>
                                         {file.type.startsWith('image/') ? (
-                                            <img src={URL.createObjectURL(file)} alt={`preview ${index}`} />
+                                            <img src={file.previewUrl} alt={`preview ${index}`} />
                                         ) : (
-                                            <video src={URL.createObjectURL(file)} muted />
+                                            <video src={file.previewUrl} muted controls={false} />
                                         )}
-                                        <RemoveButton onClick={() => handleRemoveFile(index)}>X</RemoveButton>
                                     </PreviewItem>
                                 ))}
                             </PreviewGrid>
-                        )}
-                    </ContentWrapper>
-                </>
-            )}
-
-            {step === 2 && (
-                <>
-                    <Header>
-                        <BackButton onClick={goToPreviousStep}><IoArrowBack /></BackButton>
-                        <h1>Nova publicação</h1>
-                        <ShareButton onClick={handleSubmit} disabled={isLoading}>
-                            {isLoading ? 'Publicando...' : 'Publicar'}
-                        </ShareButton>
-                    </Header>
-                    <ContentWrapper>
-                        <PreviewGrid style={{ marginBottom: '20px' }}>
-                            {files.map((file, index) => (
-                                <PreviewItem key={index}>
-                                    {file.type.startsWith('image/') ? (
-                                        <img src={URL.createObjectURL(file)} alt={`preview ${index}`} />
-                                    ) : (
-                                        <video src={URL.createObjectURL(file)} muted controls={false} />
-                                    )}
-                                </PreviewItem>
-                            ))}
-                        </PreviewGrid>
-                        <CaptionTextarea
-                            placeholder="Escreve uma legenda..."
-                            value={caption}
-                            onChange={(e) => setCaption(e.target.value)}
+                            <CaptionTextarea
+                                placeholder="Escreve uma legenda..."
+                                value={caption}
+                                onChange={(e) => setCaption(e.target.value)}
+                            />
+                        </ContentWrapper>
+                    </>
+                )}
+            </PageWrapper>
+            
+            {isCropperOpen && (
+                <ModalOverlay>
+                    <ModalContent>
+                        <ModalHeader>Recortar Imagem</ModalHeader>
+                        <Cropper
+                            ref={cropperRef}
+                            src={imageToCrop.src}
+                            style={{ height: 400, width: '100%' }}
+                            aspectRatio={1}
+                            viewMode={1}
+                            guides={true}
+                            background={false}
+                            responsive={true}
+                            checkOrientation={false}
                         />
-                        <p>{caption.length} / 2,200</p>
-                    </ContentWrapper>
-                </>
+                        <ModalFooter>
+                            <ModalButton className="primary" onClick={handleCrop}>Recortar e Adicionar</ModalButton>
+                        </ModalFooter>
+                    </ModalContent>
+                </ModalOverlay>
             )}
-        </PageWrapper>
+        </>
     );
 };
 

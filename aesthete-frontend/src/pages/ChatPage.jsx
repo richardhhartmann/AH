@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStoryStatus } from '../context/StoryContext';
 import { useSelector, useDispatch } from 'react-redux';
-import { useLocation, Link, useParams } from 'react-router-dom';
+import { useLocation, Link, useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import api, { API_URL } from '../api/axios';
 import io from 'socket.io-client';
 import { FiCheck, FiSend, FiMoreVertical, FiTrash2 } from "react-icons/fi";
 import { FaMicrophone } from 'react-icons/fa';
 import { IoArrowBack, IoCameraOutline } from "react-icons/io5";
-import { fetchChats, markChatAsReadInState, updateChatStateFromSocket, removeChatFromState } from '../features/chat/chatSlice'; 
+import { fetchChats, markChatAsReadInState, updateChatStateFromSocket, removeChatFromState } from '../features/chat/chatSlice';
 import AudioPlayer from '../components/AudioPlayer';
 
 const MenuButton = styled.button`
@@ -26,8 +26,7 @@ const MenuButton = styled.button`
   justify-content: center;
   font-size: 1.2rem;
   color: #8e8e8e;
-  
-  opacity: 0; // Continua escondido por padrão
+  opacity: 0;
   transition: opacity 0.2s ease-in-out, background-color 0.2s;
 
   &:hover {
@@ -58,7 +57,7 @@ const DropdownItem = styled.button`
   text-align: left;
   cursor: pointer;
   font-size: 0.9rem;
-  color: #ed4956; // Cor vermelha para ação destrutiva
+  color: #ed4956;
 
   &:hover {
     background-color: #fafafa;
@@ -67,7 +66,7 @@ const DropdownItem = styled.button`
 
 const ChatContainer = styled.div`
   display: flex;
-  height: calc(90vh - 61px); /* Subtrai a altura da Navbar */
+  height: calc(90vh - 61px);
   max-width: 935px;
   margin: 0 auto;
   border: 1px solid #dbdbdb;
@@ -76,7 +75,7 @@ const ChatContainer = styled.div`
   @media (max-width: 768px) {
     border: none;
     margin: 0;
-    height: calc(100vh - 60px - 60px); /* Subtrai Navbar e MobileFooter */
+    height: calc(100vh - 60px - 60px);
   }
 `;
 
@@ -97,13 +96,12 @@ const ChatItem = styled.div`
   padding: 10px 15px;
   cursor: pointer;
   background-color: ${props => props.isActive ? '#efefef' : 'transparent'};
-  position: relative; // Essencial para o posicionamento do menu
+  position: relative;
   
   &:hover { 
     background-color: #fafafa;
   }
 
-  // Esta nova regra torna o MenuButton visível quando o mouse está sobre o ChatItem
   &:hover ${MenuButton} {
     opacity: 1;
   }
@@ -119,7 +117,6 @@ const Avatar = styled.img`
   height: 50px;
   border-radius: 50%;
   margin-right: 15px;
-  // Lógica de borda atualizada
   border: 3px solid ${props => props.storyStatus === 'unviewed' ? 'rgb(254, 121, 13)' : (props.storyStatus === 'viewed' ? '#dbdbdb' : 'transparent')};
   padding: 2px;
 `;
@@ -174,8 +171,8 @@ const ChatWindow = styled.div`
   width: 65%;
   display: flex;
   flex-direction: column;
-  height: 100%; /* Garante que o componente ocupe toda a altura do container pai */
-  min-height: 0; /* Hack de flexbox para garantir que o filho com overflow funcione corretamente */
+  height: 100%;
+  min-height: 0;
 
   @media (max-width: 768px) {
     width: 100%;
@@ -191,17 +188,16 @@ const ChatWindowHeader = styled.div`
   align-items: center;
   gap: 10px;
 
-  /* MODIFICAÇÃO PARA MOBILE */
   @media (max-width: 768px) {
     position: sticky;
-    top: 0; /* Colado no topo da área de rolagem */
-    background-color: #fff; /* Fundo para não ficar transparente */
-    z-index: 2; /* Garante que fique sobre a lista de mensagens */
+    top: 0;
+    background-color: #fff;
+    z-index: 2;
   }
 `;
 
 const BackButton = styled.button`
-  display: none; // Escondido no desktop
+  display: none;
   @media (max-width: 768px) {
     display: flex;
     background: none;
@@ -213,7 +209,6 @@ const BackButton = styled.button`
 `;
 
 const HeaderAvatar = styled.img`
-  /* MODIFICAÇÃO: AGORA APARECE EM TODAS AS TELAS */
   display: block;
   width: 40px;
   height: 40px;
@@ -221,9 +216,9 @@ const HeaderAvatar = styled.img`
 `;
 
 const MessageList = styled.div`
-  flex: 1; /* Faz o componente ocupar todo o espaço vertical disponível */
+  flex: 1;
   padding: 20px;
-  overflow-y: auto; /* Adiciona a barra de rolagem APENAS a este componente */
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 `;
@@ -242,7 +237,7 @@ const StoryPreviewWrapper = styled.div`
   background-color: rgba(0, 0, 0, 0.15);
   padding: 8px;
   border-radius: 12px;
-  margin-bottom: 8px; /* Espaçamento entre o preview e o texto da resposta */
+  margin-bottom: 8px;
   border-left: 3px solid ${props => props.isMe ? 'rgba(255,255,255,0.5)' : 'rgb(254, 121, 13)'};
   display: flex;
   align-items: center;
@@ -297,25 +292,24 @@ const SendButton = styled(MicButton)``;
 
 const Placeholder = styled.div`
     display: flex;
-    justify-content: center;   // horizontal
-    align-items: center;       // vertical
-    height: 100vh;             // altura da tela inteira
-    width: 100%;               // largura total
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100%;
     color: #8e8e8e;
     @media (max-width: 768px) {
         display: none;
     }
 `;
 
-// --- Configuração ---
 const ENDPOINT = process.env.REACT_APP_API_URL;
 let typingTimeout;
 
-// --- Componente ---
 const ChatPage = () => {
     const dispatch = useDispatch();
     const location = useLocation();
     const { chatId } = useParams();
+    const navigate = useNavigate();
 
     const { storyFeed, getStoryStatus, openStoryViewer } = useStoryStatus();
 
@@ -361,6 +355,10 @@ const ChatPage = () => {
     const handleSelectChat = useCallback(async (chat) => {
         setSelectedChat(chat);
         setOpenMenuId(null);
+        
+        // Padroniza a URL, atualizando-a com o ID do chat selecionado
+        navigate(`/chat/${chat._id}`);
+
         if (chat.unreadCount > 0) {
             try {
                 await api.put(`/chats/${chat._id}/read`);
@@ -369,7 +367,7 @@ const ChatPage = () => {
                 console.error("Erro ao marcar chat como lido", error); 
             }
         }
-    }, [dispatch]);
+    }, [dispatch, navigate]);
 
     useEffect(() => {
         if (!loggedInUser) return;
@@ -400,16 +398,17 @@ const ChatPage = () => {
     }, [loggedInUser, dispatch]);
 
     useEffect(() => {
-        // Prioriza o ID da URL. Se não houver, tenta o do state.
         const idToSelect = chatId || location.state?.chatId;
 
         if (idToSelect && chats.length > 0) {
             const chatToSelect = chats.find(c => c._id === idToSelect);
             if (chatToSelect) {
-                handleSelectChat(chatToSelect);
+                setSelectedChat(chatToSelect);
             }
+        } else if (!chatId) { // Se não há chatId na URL, limpa a seleção
+            setSelectedChat(null);
         }
-    }, [chats, location.state, chatId, handleSelectChat]);
+    }, [chats, location.state, chatId]);
     
     useEffect(() => {
         if (!selectedChat || !socket) return;
@@ -427,21 +426,20 @@ const ChatPage = () => {
     }, [selectedChat, socket]);
 
     const handleToggleMenu = (e, chatId) => {
-        e.stopPropagation(); // Impede que o chat seja selecionado ao clicar no menu
+        e.stopPropagation();
         setOpenMenuId(prevId => (prevId === chatId ? null : chatId));
     };
 
-    // NOVA FUNÇÃO para deletar a conversa
     const handleDeleteChat = async (e, chatIdToDelete) => {
         e.stopPropagation();
         if (window.confirm("Tem certeza que deseja apagar esta conversa? Esta ação não pode ser desfeita.")) {
             try {
                 await api.delete(`/chats/${chatIdToDelete}`);
-                dispatch(removeChatFromState(chatIdToDelete)); // Atualiza o estado do Redux
+                dispatch(removeChatFromState(chatIdToDelete));
                 
-                // Se a conversa deletada era a que estava selecionada
                 if (selectedChat?._id === chatIdToDelete) {
                     setSelectedChat(null);
+                    navigate('/chat'); // Volta para a lista de chats
                 }
                 setOpenMenuId(null);
             } catch (error) {
@@ -554,7 +552,7 @@ const ChatPage = () => {
         if (!text) return '';
         if (text.length <= maxLength) return text;
         return text.slice(0, maxLength) + '...';
-        };
+    };
 
     const formatTime = (timeInSeconds) => {
         if (!timeInSeconds) return "0:00";
@@ -563,6 +561,11 @@ const ChatPage = () => {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
+    const getImageUrl = (url) => {
+        if (!url) return '';
+        return url.startsWith('http') ? url : `${API_URL}${url}`;
+    };
+    
     return (
         <ChatContainer>
             <ChatList chatSelected={!!selectedChat}>
@@ -574,10 +577,8 @@ const ChatPage = () => {
                     const isChatTyping = typingChats.includes(chat._id);
                     const storyStatus = getStoryStatus(otherUser._id);
 
-                    // 1. LÓGICA PARA ABRIR O STORY (será usada no avatar)
                     const handleAvatarClick = (e) => {
-                        e.stopPropagation(); // Impede que o clique "vaze" para a linha e abra o chat
-
+                        e.stopPropagation();
                         if (storyStatus.hasStories) {
                             const userIndexInFeed = storyFeed.findIndex(group => group.userId === otherUser._id);
                             if (userIndexInFeed !== -1) {
@@ -587,16 +588,14 @@ const ChatPage = () => {
                     };
 
                     return (
-                        // 2. O CLIQUE NA LINHA AGORA SEMPRE ABRE O CHAT
                         <ChatItem 
                             key={chat._id} 
                             onClick={() => handleSelectChat(chat)} 
                             isActive={selectedChat?._id === chat._id}
                         >
-                            {/* 3. O CLIQUE NO AVATAR AGORA ABRE O STORY */}
                             <AvatarWrapper onClick={handleAvatarClick}>
                                 <Avatar 
-                                    src={otherUser.avatar?.startsWith('http') ? otherUser.avatar : `${API_URL}${otherUser.avatar}`} 
+                                    src={getImageUrl(otherUser.avatar)} 
                                     alt={otherUser.username}
                                     storyStatus={storyStatus.hasStories ? (storyStatus.allStoriesViewed ? 'viewed' : 'unviewed') : 'none'}
                                 />
@@ -657,11 +656,14 @@ const ChatPage = () => {
                 {selectedChat ? (
                     <>
                         <ChatWindowHeader>
-                            <BackButton onClick={() => setSelectedChat(null)}>
+                            <BackButton onClick={() => {
+                                setSelectedChat(null);
+                                navigate('/chat');
+                            }}>
                                 <IoArrowBack />
                             </BackButton>
                             <Link to={`/perfil/${getOtherUser(selectedChat).username}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'inherit' }}>
-                                <HeaderAvatar src={getOtherUser(selectedChat).avatar?.startsWith('http') ? getOtherUser(selectedChat).avatar : `${API_URL}${getOtherUser(selectedChat).avatar}`} />
+                                <HeaderAvatar src={getImageUrl(getOtherUser(selectedChat).avatar)} />
                                 <span>{getOtherUser(selectedChat).username}</span>
                             </Link>
                         </ChatWindowHeader>
@@ -670,19 +672,14 @@ const ChatPage = () => {
                                 const isMe = msg.sender._id === loggedInUser._id;
                                 return (
                                     <MessageBubble key={msg._id || i} isMe={isMe}>
-                                        {/* --- LÓGICA DE RENDERIZAÇÃO MODIFICADA ABAIXO --- */}
-
-                                        {/* 1. Se a mensagem tiver um preview de story, mostre-o */}
                                         {msg.storyPreview?.mediaUrl && (
                                             <StoryPreviewWrapper isMe={isMe}>
-                                                <StoryPreviewImage src={msg.storyPreview.mediaUrl.startsWith('http') ? msg.storyPreview.mediaUrl : `${API_URL}${msg.storyPreview.mediaUrl}`} />
+                                                <StoryPreviewImage src={getImageUrl(msg.storyPreview.mediaUrl)} />
                                                 <StoryPreviewText isMe={isMe}>
                                                     {isMe ? "Você respondeu ao story" : "Respondeu ao seu story"}
                                                 </StoryPreviewText>
                                             </StoryPreviewWrapper>
                                         )}
-
-                                        {/* 2. Renderiza o conteúdo principal (áudio ou texto) */}
                                         {msg.contentType === 'audio' ? (
                                             <AudioPlayer 
                                                 src={msg.content} 
@@ -692,7 +689,6 @@ const ChatPage = () => {
                                         ) : (
                                             msg.content
                                         )}
-
                                     </MessageBubble>
                                 );
                             })}
